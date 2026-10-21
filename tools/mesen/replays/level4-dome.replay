@@ -1,0 +1,21 @@
+# Level 4 (planet 4, first visit): the pod, shield on, is set down 75 px from the dome of type 11
+# and gets no input for 600 steps; the dome shoots, fires missiles, makes flames and drones.
+# The warp is a test setup: the pod at rest at (2760, 2330), the camera at (2720, 2272).
+level 4
+dc 80
+3 -
+1 D
+2 -
+warp 2760 2330 2720 2272
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -

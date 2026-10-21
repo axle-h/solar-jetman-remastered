@@ -1,0 +1,129 @@
+# Level 4 (planet 4): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots twice and waits; the fuel is refilled and the pod
+# set down again every 100 steps. Domes 1E, wide machines 1C and 1D, large machines 22, hourglass
+# turrets 19, block turrets 1B and the generators 48, 49, 4B and 4C with their mines and drones,
+# and their shots, missiles and exhaust.
+level 4
+dc 80
+3 -
+1 D
+2 -
+# Dome 1E: target (1916, 2654), the target lies above of the pod, which is set at (1916, 2714), camera (1760, 2688)
+warp 1916 2714 1760 2688
+fuel E000
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1916 2714 1760 2688
+fuel E000
+100 -
+warp 1916 2714 1760 2688
+fuel E000
+100 -
+warp 1916 2714 1760 2688
+fuel E000
+100 -
+warp 1916 2714 1760 2688
+fuel E000
+100 -
+warp 1916 2714 1760 2688
+fuel E000
+100 -
+# Wide machines 1D and 1C: target (845, 1749), the target lies right of the pod, which is set at (785, 1749), camera (576, 1632)
+warp 785 1749 576 1632
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 785 1749 576 1632
+fuel E000
+100 -
+warp 785 1749 576 1632
+fuel E000
+100 -
+warp 785 1749 576 1632
+fuel E000
+100 -
+# Wide machines 1D and 1C: target (2811, 1241), the target lies above of the pod, which is set at (2811, 1301), camera (2656, 1280)
+warp 2811 1301 2656 1280
+fuel E000
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2811 1301 2656 1280
+fuel E000
+100 -
+warp 2811 1301 2656 1280
+fuel E000
+100 -
+warp 2811 1301 2656 1280
+fuel E000
+100 -
+# Large machine 22 and generators 48, 49: target (1798, 3075), the target lies right of the pod, which is set at (1738, 3075), camera (1536, 2976)
+warp 1738 3075 1536 2976
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1738 3075 1536 2976
+fuel E000
+100 -
+warp 1738 3075 1536 2976
+fuel E000
+100 -
+warp 1738 3075 1536 2976
+fuel E000
+100 -
+warp 1738 3075 1536 2976
+fuel E000
+100 -
+# Hourglass turret 19: target (3082, 1602), the target lies below of the pod, which is set at (3082, 1542), camera (2944, 1376)
+warp 3082 1542 2944 1376
+fuel E000
+16 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3082 1542 2944 1376
+fuel E000
+100 -
+warp 3082 1542 2944 1376
+fuel E000
+100 -
+warp 3082 1542 2944 1376
+fuel E000
+100 -
+# Block turret 1B and generator 4C: target (3288, 2984), the target lies right of the pod, which is set at (3228, 2984), camera (3008, 2880)
+warp 3228 2984 3008 2880
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3228 2984 3008 2880
+fuel E000
+100 -
+warp 3228 2984 3008 2880
+fuel E000
+100 -
+warp 3228 2984 3008 2880
+fuel E000
+100 -
+warp 3228 2984 3008 2880
+fuel E000
+100 -

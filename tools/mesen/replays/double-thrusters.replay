@@ -1,0 +1,19 @@
+# DOUBLE STRENGTH THRUSTERS (device 0B, player.md 4.4): twice the acceleration; the shield replay's arc.
+dc 80
+device 0B
+3 -
+1 D
+2 -
+8 R
+8 B
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -

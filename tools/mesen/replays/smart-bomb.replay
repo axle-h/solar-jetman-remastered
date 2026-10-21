@@ -1,0 +1,21 @@
+# The smart bomb (weapon 4, player.md 10.2, behaviour.md 5.11.4) on level 3, shield on. Four turrets
+# spawn off screen (warp = a test setup); the pod is set down among them and fires the bomb three
+# times (A with Select held): 128 of the 224 gauge units each time, the second press empties the
+# gauge and the third is a plain bullet. Everything in slots 15-30 explodes at once (+5 each).
+level 3
+dc 80
+weapon 4
+keepfuel
+3 -
+1 D
+warp 1830 1640 1700 1500
+40 -
+warp 1830 1710 1700 1620
+4 -
+1 A SEL
+12 -
+1 A SEL
+12 -
+1 A SEL
+12 -
+60 -

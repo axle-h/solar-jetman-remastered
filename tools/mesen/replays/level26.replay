@@ -1,0 +1,4 @@
+# Level 26 (the final level): the camera follows its route by itself, the pod (state 6) is carried along, the fuel is kept full. Objects 4F-5E appear as the camera passes them.
+level 26
+keepfuel
+3900 -

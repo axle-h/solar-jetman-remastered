@@ -1,0 +1,151 @@
+# Level 2 (planet 2): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots (or not) and waits; the fuel is refilled and the pod
+# set down again every 100 steps. The formation of eight parts 33-40, the green creatures 43-46, the
+# large creatures 21 with their thrusters, and the drone generators 4B and 4C.
+level 2
+dc 80
+3 -
+1 D
+2 -
+# Formation 33-40: target (1540, 876), the target lies right of the pod, which is set at (1430, 876), camera (1280, 768)
+warp 1430 876 1280 768
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 1430 876 1280 768
+fuel E000
+100 -
+warp 1430 876 1280 768
+fuel E000
+100 -
+warp 1430 876 1280 768
+fuel E000
+100 -
+warp 1430 876 1280 768
+fuel E000
+100 -
+warp 1430 876 1280 768
+fuel E000
+100 -
+# Green creatures 43: target (2850, 1000), the target lies above of the pod, which is set at (2850, 1100), camera (2720, 1024)
+warp 2850 1100 2720 1024
+fuel E000
+1 A
+6 -
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+warp 2850 1100 2720 1024
+fuel E000
+100 -
+# Green creatures 44, 43 and 45: target (1126, 889), the target lies below of the pod, which is set at (1126, 789), camera (992, 640)
+warp 1126 789 992 640
+fuel E000
+16 R
+1 A
+6 -
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+warp 1126 789 992 640
+fuel E000
+100 -
+# Large creature 21: target (1280, 1627), the target lies right of the pod, which is set at (1180, 1627), camera (1024, 1536)
+warp 1180 1627 1024 1536
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 1180 1627 1024 1536
+fuel E000
+100 -
+warp 1180 1627 1024 1536
+fuel E000
+100 -
+warp 1180 1627 1024 1536
+fuel E000
+100 -
+warp 1180 1627 1024 1536
+fuel E000
+100 -
+warp 1180 1627 1024 1536
+fuel E000
+100 -
+# Large creature 21: target (2684, 1495), the target lies below of the pod, which is set at (2684, 1395), camera (2528, 1248)
+warp 2684 1395 2528 1248
+fuel E000
+16 R
+1 A
+6 -
+100 -
+warp 2684 1395 2528 1248
+fuel E000
+100 -
+warp 2684 1395 2528 1248
+fuel E000
+100 -
+warp 2684 1395 2528 1248
+fuel E000
+100 -
+warp 2684 1395 2528 1248
+fuel E000
+100 -
+warp 2684 1395 2528 1248
+fuel E000
+100 -
+# Drone generator 4B: target (362, 1765), the target lies below of the pod, which is set at (362, 1665), camera (224, 1536)
+warp 362 1665 224 1536
+fuel E000
+16 R
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -
+warp 362 1665 224 1536
+fuel E000
+100 -

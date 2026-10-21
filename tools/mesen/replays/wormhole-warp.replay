@@ -1,0 +1,29 @@
+# The way into a warp level (player.md 9.2, game-flow.md 7.4, scenes.md 10.1): second level 13 of planet 0 with the planet's warpship flag set. The pod is set down on the wormhole until the guard lets the touch through (64 steps); the gate state draws it in (193 steps), the warp-level introduction (kind 6) is shown, and warp level 29 is entered at its home point: the pod collects crystals by touch while the countdown runs and its 704 steps end the level; the badge screen counts them and the change leads back to planet 0, 128 px above the mothership. The mesh helpers of level 29 follow the tables.
+level 13
+flag 0
+warp 127 41 0 0
+20 -
+warp 127 41 0 0
+20 -
+warp 127 41 0 0
+20 -
+warp 127 41 0 0
+210 -
+40 B
+20 L
+60 -
+30 B
+40 R
+50 B
+50 -
+20 R B
+80 L B
+60 -
+30 D
+40 B
+30 L
+40 B
+60 R B
+100 -
+20 B
+200 -

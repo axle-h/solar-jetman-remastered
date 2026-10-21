@@ -1,0 +1,215 @@
+# Level 3 (planet 3): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots (or not) and waits; the fuel is refilled and the pod
+# set down again every 100 steps. Turrets 02, the large creatures 21 with their thrusters, and the egg 5F
+# (which the pod shoots, leaving an exit in the items list).
+level 3
+dc 80
+3 -
+1 D
+2 -
+# Turrets 02: target (2804, 510), the target lies left of the pod, which is set at (2894, 510), camera (2816, 416)
+warp 2894 510 2816 416
+fuel E000
+8 L
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2894 510 2816 416
+fuel E000
+100 -
+warp 2894 510 2816 416
+fuel E000
+100 -
+warp 2894 510 2816 416
+fuel E000
+100 -
+# Egg 5F: target (1196, 931), the target lies right of the pod, which is set at (1126, 931), camera (928, 832)
+warp 1126 931 928 832
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1126 931 928 832
+fuel E000
+100 -
+warp 1126 931 928 832
+fuel E000
+100 -
+# Large creature 21 (below the pod): target (2108, 1468), the target lies below of the pod, which is set at (2108, 1170), camera (1984, 1152)
+warp 2108 1170 1984 1152
+fuel E000
+16 R
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+warp 2108 1170 1984 1152
+fuel E000
+30 -
+# Large creature 21 (below the pod): target (690, 1585), the target lies below of the pod, which is set at (690, 1170), camera (576, 1152)
+warp 690 1170 576 1152
+fuel E000
+16 R
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+warp 690 1170 576 1152
+fuel E000
+30 -
+# Large creature 21: target (4290, 1289), the target lies below of the pod, which is set at (4290, 1189), camera (4160, 1056)
+warp 4290 1189 4160 1056
+fuel E000
+16 R
+1 A
+6 -
+100 -
+warp 4290 1189 4160 1056
+fuel E000
+100 -
+warp 4290 1189 4160 1056
+fuel E000
+100 -
+warp 4290 1189 4160 1056
+fuel E000
+100 -
+warp 4290 1189 4160 1056
+fuel E000
+100 -
+warp 4290 1189 4160 1056
+fuel E000
+100 -

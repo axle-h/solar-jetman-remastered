@@ -1,0 +1,15 @@
+# The green orb with the tractor beam holding a load whose swing count is poked to 3 (behaviour.md 5.4): the pod, shield off, is set down above a probe-shield item, catches it and hangs on it; every 128 steps an orb is made without the random gate, and it homes on the pod faster.
+level 0
+dc 80
+3 -
+item 2 3 700 330
+warp 700 300 600 200
+fuel E000
+6 -
+spin 3
+1 -
+spin 3
+120 -
+fuel E000
+spin 3
+300 -

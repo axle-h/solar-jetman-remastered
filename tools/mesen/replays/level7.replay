@@ -1,0 +1,154 @@
+# Level 7 (planet 7): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots (or not) and waits; the fuel is refilled and the pod
+# set down again every 100 steps. The formation of six parts 23-2D, the satellite 60 with its companion
+# 61, the large machine 22, wide machines 1D and 1C, the green creatures 43-46, the domes and the
+# hourglass turrets, with their shots, missiles, drones and exhaust.
+level 7
+dc 80
+3 -
+1 D
+2 -
+# Formation 23-2D: target (2946, 1391), the target lies right of the pod, which is set at (2836, 1391), camera (2688, 1280)
+warp 2836 1391 2688 1280
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 2836 1391 2688 1280
+fuel E000
+100 -
+warp 2836 1391 2688 1280
+fuel E000
+100 -
+warp 2836 1391 2688 1280
+fuel E000
+100 -
+warp 2836 1391 2688 1280
+fuel E000
+100 -
+# Satellite 60 and companion 61: target (3064, 744), the target lies right of the pod, which is set at (2954, 744), camera (2784, 640)
+warp 2954 744 2784 640
+fuel E000
+8 R
+100 -
+warp 2954 744 2784 640
+fuel E000
+100 -
+warp 2954 744 2784 640
+fuel E000
+100 -
+warp 2954 744 2784 640
+fuel E000
+100 -
+warp 2954 744 2784 640
+fuel E000
+100 -
+warp 2954 744 2784 640
+fuel E000
+100 -
+# Wide machines 1D and 1C: target (3381, 1568), the target lies right of the pod, which is set at (3321, 1568), camera (3104, 1472)
+warp 3321 1568 3104 1472
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3321 1568 3104 1472
+fuel E000
+100 -
+warp 3321 1568 3104 1472
+fuel E000
+100 -
+warp 3321 1568 3104 1472
+fuel E000
+100 -
+# Large machine 22: target (2454, 1401), the target lies right of the pod, which is set at (2364, 1401), camera (2176, 1280)
+warp 2364 1401 2176 1280
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2364 1401 2176 1280
+fuel E000
+100 -
+warp 2364 1401 2176 1280
+fuel E000
+100 -
+warp 2364 1401 2176 1280
+fuel E000
+100 -
+# Green creatures 43, 45 and 46: target (1480, 1240), the target lies right of the pod, which is set at (1390, 1240), camera (1216, 1120)
+warp 1390 1240 1216 1120
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 1390 1240 1216 1120
+fuel E000
+100 -
+warp 1390 1240 1216 1120
+fuel E000
+100 -
+warp 1390 1240 1216 1120
+fuel E000
+100 -
+warp 1390 1240 1216 1120
+fuel E000
+100 -
+warp 1390 1240 1216 1120
+fuel E000
+100 -
+# Dome 11: target (784, 2036), the target lies above of the pod, which is set at (784, 2096), camera (640, 2080)
+warp 784 2096 640 2080
+fuel E000
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 784 2096 640 2080
+fuel E000
+100 -
+warp 784 2096 640 2080
+fuel E000
+100 -
+warp 784 2096 640 2080
+fuel E000
+100 -
+# Hourglass turret 1A: target (2368, 707), the target lies above of the pod, which is set at (2368, 767), camera (2240, 736)
+warp 2368 767 2240 736
+fuel E000
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2368 767 2240 736
+fuel E000
+100 -
+warp 2368 767 2240 736
+fuel E000
+100 -
+# Block turret 1B: target (2810, 836), the target lies below of the pod, which is set at (2810, 776), camera (2656, 608)
+warp 2810 776 2656 608
+fuel E000
+16 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2810 776 2656 608
+fuel E000
+100 -
+warp 2810 776 2656 608
+fuel E000
+100 -

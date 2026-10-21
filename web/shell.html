@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solar Jetman remastered</title>
+<style>
+  :root { color-scheme: dark; --bg: #111; --fg: #ddd; --accent: #6cf; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, sans-serif; }
+  main { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; box-sizing: border-box; min-height: 100vh; }
+  canvas { display: block; background: #000; width: min(100%, calc((100vh - 120px) * 256 / 240)); aspect-ratio: 256 / 240; image-rendering: pixelated; outline: none; }
+  .bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  button { font: inherit; padding: 6px 14px; color: var(--fg); background: #222; border: 1px solid #555; border-radius: 4px; cursor: pointer; }
+  button:hover, button:focus-visible { border-color: var(--accent); }
+  #status { min-height: 1.4em; color: #999; }
+  body.drag canvas { outline: 3px dashed var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <div class="bar">
+    <button id="choose" type="button">Choose ROM file</button>
+    <span id="status">Loading...</span>
+  </div>
+  <input id="file" type="file" accept=".nes,.zip" hidden>
+</main>
+<script>
+(function () {
+  var DIR = "/solar-jetman";
+  var status = document.getElementById("status");
+  var canvas = document.getElementById("canvas");
+  function say(text) { status.textContent = text; }
+
+  // Saves, settings and the imported game data live in IndexedDB (IDBFS).
+  // Calls are batched: the program may be in the middle of writing files, and a sync that
+  // starts then can see a half-deleted tree. A failed sync is tried again.
+  var syncing = false, again = false, timer = null, failures = 0;
+  window.sjSync = function () {
+    if (syncing) { again = true; return; }
+    if (timer) return;
+    timer = setTimeout(function () {
+      timer = null;
+      syncing = true;
+      FS.syncfs(false, function (err) {
+        syncing = false;
+        if (err) {
+          console.warn("sync to IndexedDB failed", err);
+          if (++failures < 5) again = true;
+        } else {
+          failures = 0;
+        }
+        if (again) { again = false; window.sjSync(); }
+      });
+    }, 500);
+  };
+
+  // The file goes to a temporary name, then is renamed, so the program never reads half a file.
+  function giveRom(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        FS.writeFile(DIR + "/import.tmp", new Uint8Array(reader.result));
+        FS.rename(DIR + "/import.tmp", DIR + "/import.nes");
+        say("Importing " + file.name + "..."); setTimeout(function () { say("Press F1 for the menu."); }, 8000);
+      } catch (e) { console.error(e); say("Could not read that file."); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  var input = document.getElementById("file");
+  document.getElementById("choose").addEventListener("click", function () { input.click(); });
+  input.addEventListener("change", function () { giveRom(input.files[0]); input.value = ""; });
+  ["dragenter", "dragover"].forEach(function (name) {
+    window.addEventListener(name, function (e) { e.preventDefault(); document.body.classList.add("drag"); });
+  });
+  ["dragleave", "drop"].forEach(function (name) {
+    window.addEventListener(name, function (e) { e.preventDefault(); document.body.classList.remove("drag"); });
+  });
+  window.addEventListener("drop", function (e) {
+    if (e.dataTransfer && e.dataTransfer.files.length) giveRom(e.dataTransfer.files[0]);
+  });
+  canvas.addEventListener("click", function () { canvas.focus(); });
+
+  window.Module = {
+    canvas: canvas,
+    print: function (t) { console.log(t); },
+    printErr: function (t) { console.error(t); },
+    preRun: [function () {
+      Module.addRunDependency("idbfs");
+      FS.mkdir(DIR);
+      FS.mount(IDBFS, {}, DIR);
+      FS.syncfs(true, function (err) {
+        if (err) console.error("load from IndexedDB failed", err);
+        window.sjFolderReady = true;
+        Module.removeRunDependency("idbfs");
+      });
+    }],
+    postRun: [function () { window.sjStarted = true; say("Press F1 for the menu."); }],
+    onAbort: function (what) { say("The game stopped: " + what); }
+  };
+  window.addEventListener("error", function (e) { say("Error: " + e.message); });
+})();
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

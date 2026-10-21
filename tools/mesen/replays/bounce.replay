@@ -1,0 +1,20 @@
+# The closed wormhole of planet 0 (the mothership's tank at 23 of 25: a test setup, fuel count 17 hex) throws the pod and then Jetman back (player.md 9.2.2): the pod set down inside its 13-pixel box with A pressed (the shot in slot 3 is wiped by the sparkle), then at the box's side so that the vertical direction bit flips, then the tank is emptied and Jetman, out on his own, is set down on the wormhole.
+level 0
+3 -
+item 0 17 635 194
+warp 932 716 800 640
+fuel E000
+1 A
+29 -
+warp 944 723 800 640
+fuel E000
+30 -
+warp 920 736 800 640
+fuel E000
+3 -
+fuel 0000
+60 -
+warp 932 716 800 640
+50 -
+warp 936 730 800 640
+30 -

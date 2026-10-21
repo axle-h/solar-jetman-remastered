@@ -1,0 +1,19 @@
+# Boosters with DOUBLE STRENGTH THRUSTERS: Select with B gives twice the table value.
+dc C0
+device 0B
+3 -
+1 D
+2 -
+8 R
+8 B SEL
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B SEL
+40 -
+8 R
+2 R
+12 B SEL
+60 -

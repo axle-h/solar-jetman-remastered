@@ -1,0 +1,29 @@
+# Level 4: the pod, shield on, hovers (the warp is a test setup: the pod at rest at (1884, 2594),
+# camera at (1760, 2496)) above the dome of type 1E at (1916, 2654), which lifts off, follows the
+# pod, makes exhaust and fires; no input for 1,000 steps, fuel refilled every 100.
+level 4
+dc 80
+3 -
+1 D
+2 -
+warp 1884 2594 1760 2496
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -
+fuel E000
+100 -

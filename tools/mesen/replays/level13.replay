@@ -1,0 +1,36 @@
+# Level 13 (planet 13): the pod, shield on, is set down beside each kind of object the level has (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off screen so that it spawns), turns to face it, shoots twice and waits; the fuel is refilled and the pod set down again every 100 steps.
+level 13
+dc 80
+3 -
+1 D
+2 -
+#  index 0 type 07 at (83, 189), the pod right
+warp 193 189 0 78
+fuel E000
+8 L
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 193 189 0 78
+fuel E000
+100 -
+warp 193 189 0 78
+fuel E000
+100 -
+#  index 1 type 0C at (232, 157), the pod left
+warp 122 157 0 46
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 122 157 0 46
+fuel E000
+100 -
+warp 122 157 0 46
+fuel E000
+100 -

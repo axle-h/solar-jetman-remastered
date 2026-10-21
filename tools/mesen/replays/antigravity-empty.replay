@@ -1,0 +1,10 @@
+# ANTI GRAVITY running out (weapon 2, gauge $0090): the drain empties the gauge in nine steps, anti-gravity
+# switches off by itself and gravity returns; a press with the gauge empty is a plain bullet.
+weapon 02
+gauge 0090
+dc 80
+3 -
+1 A SEL
+30 -
+1 A SEL
+30 -

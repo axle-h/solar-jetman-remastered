@@ -1,0 +1,45 @@
+# Shooting the egg of level 0 (shield on, A held for autofire): it is destroyed, leaves an exit
+# item in the items list and explodes; found by a search in src/game.
+dc 80
+3 -
+1 D
+8 R
+8 -
+8 B L
+8 A
+8 L
+8 B L
+8 B L
+8 B L
+8 B
+8 A L
+8 B L
+8 A
+8 A
+8 B L
+8 B
+8 B R
+8 A
+8 -
+8 B L
+8 B
+8 B R
+8 A
+8 R
+8 A L
+8 R
+8 B R
+8 B R
+8 R
+8 B L
+8 L
+8 R
+8 B
+8 B
+8 B R
+8 A
+8 R
+8 B L
+8 L
+8 A L
+8 A

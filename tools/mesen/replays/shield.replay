@@ -1,0 +1,20 @@
+# The probe shield (dc 80 gives the pod shields): switched on before the same long arc as
+# floors-walls, so the collision box grows in free flight (the y >= 32 and flat-surface
+# rules), impacts cost less, then off, on again, and into the wall.
+dc 80
+3 -
+1 D
+2 -
+8 R
+8 B
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -

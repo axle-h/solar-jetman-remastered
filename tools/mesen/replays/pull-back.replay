@@ -1,0 +1,13 @@
+# The fourth-slot pull-back (behaviour.md 6.1, quirk Q23): with the mothership's indicator in slot 11 and three items in slots 12-14, the unheld item in slot 14 creeps back, 1 px per axis a step, to its place in the level's list (580, 840); the list entry is reset to it. Level 0 with the list entries 2-4 written beside the pod.
+level 0
+dc 80
+3 -
+item 2 3 700 250
+item 3 4 740 262
+item 4 5 780 274
+warp 720 200 600 120
+fuel E000
+1 D
+80 -
+fuel E000
+80 -

@@ -1,0 +1,103 @@
+# Level 5 (planet 5): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots twice and waits; the fuel is refilled and the pod
+# set down again every 100 steps. Walkers 13 and 14 with their heads, ground guns 12, 18 and 47, and
+# their shots.
+level 5
+dc 80
+3 -
+1 D
+2 -
+# Walker 13 (three in a row): target (2791, 3440), the target lies right of the pod, which is set at (2731, 3440), camera (2528, 3328)
+warp 2731 3440 2528 3328
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2731 3440 2528 3328
+fuel E000
+100 -
+warp 2731 3440 2528 3328
+fuel E000
+100 -
+warp 2731 3440 2528 3328
+fuel E000
+100 -
+warp 2731 3440 2528 3328
+fuel E000
+100 -
+# Walker 14: target (1227, 3440), the target lies right of the pod, which is set at (1167, 3440), camera (960, 3328)
+warp 1167 3440 960 3328
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1167 3440 960 3328
+fuel E000
+100 -
+warp 1167 3440 960 3328
+fuel E000
+100 -
+warp 1167 3440 960 3328
+fuel E000
+100 -
+# Ground gun 12: target (1584, 3272), the target lies right of the pod, which is set at (1524, 3272), camera (1312, 3168)
+warp 1524 3272 1312 3168
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1524 3272 1312 3168
+fuel E000
+100 -
+warp 1524 3272 1312 3168
+fuel E000
+100 -
+warp 1524 3272 1312 3168
+fuel E000
+100 -
+# Ground gun 47: target (660, 1896), the target lies below of the pod, which is set at (660, 1836), camera (512, 1664)
+warp 660 1836 512 1664
+fuel E000
+16 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 660 1836 512 1664
+fuel E000
+100 -
+warp 660 1836 512 1664
+fuel E000
+100 -
+warp 660 1836 512 1664
+fuel E000
+100 -
+# Ground gun 18: target (5476, 1112), the target lies left of the pod, which is set at (5536, 1112), camera (5504, 992)
+warp 5536 1112 5504 992
+fuel E000
+8 L
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 5536 1112 5504 992
+fuel E000
+100 -
+warp 5536 1112 5504 992
+fuel E000
+100 -
+warp 5536 1112 5504 992
+fuel E000
+100 -

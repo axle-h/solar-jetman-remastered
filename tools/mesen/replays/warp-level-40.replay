@@ -1,0 +1,24 @@
+# Warp level 40 (planet 11's, entered from its second level with the flag set, levels.md Appendix A): the pod collects crystals by touch (no shooting, no damage, bounces off the walls and the pillars for nothing) while the countdown digit runs; its 704 steps end the level, the badge screen counts the crystals and the change leads back to planet 4, 128 px above the mothership. The mesh helper in slots 23 and 24 is set down at its start (a test setup: the slots' leftovers are the second level's).
+level 40
+obj 23 0 0 16 0 0
+obj 24 0 0 16 0 0
+20 -
+40 B
+20 L
+60 -
+30 B
+40 R
+50 B
+50 -
+20 R B
+80 L B
+60 -
+30 D
+40 B
+30 L
+40 B
+60 R B
+100 -
+20 B
+100 -
+100 -

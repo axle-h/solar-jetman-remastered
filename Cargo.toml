@@ -1,0 +1,38 @@
+[package]
+name = "solar-jetman"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+default-run = "solar-jetman"
+
+[[bin]]
+name = "solar-jetman"
+path = "src/app/main.rs"
+
+[dependencies]
+directories = "=6.0.0"
+miniz_oxide = "=0.8.9"
+png = "=0.18.1"
+regex = "=1.13.1"
+ron = "=0.12.2"
+serde = { version = "=1.0.229", features = ["derive"] }
+sha1_smol = "=1.0.1"
+toml = "=1.1.8"
+
+# SDL3, for the app only: the system library on Linux, built from source and linked statically on
+# Windows and macOS.
+[target.'cfg(target_os = "linux")'.dependencies]
+sdl3 = { version = "=0.20.0", features = ["use-pkg-config"] }
+
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+sdl3 = { version = "=0.20.0", features = ["build-from-source-static"] }
+
+[target.'cfg(target_os = "emscripten")'.dependencies]
+sdl3 = "=0.20.0"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

@@ -1,0 +1,30 @@
+# Jetman alone uses a wormhole (player.md 9.2.1): planet 0 with the mothership's tank full (a test setup: fuel count 25), the pod set down by the wormhole, its tank emptied so that it blows up and Jetman climbs out, then Jetman set down on the wormhole. The gate state draws him in (his own picture is left alone), level 13 is entered as Jetman at its home point, and he is set down on it again and again until the guard lets the touch through (64 steps) for the way back to planet 0, 128 px above the mothership.
+level 0
+3 -
+item 0 19 635 194
+warp 932 660 800 600
+fuel E000
+2 -
+fuel 0000
+70 -
+warp 932 716 800 640
+fuel E000
+200 -
+warp 127 41 0 0
+fuel E000
+25 -
+warp 127 41 0 0
+fuel E000
+25 -
+warp 127 41 0 0
+fuel E000
+25 -
+warp 127 41 0 0
+fuel E000
+25 -
+warp 127 41 0 0
+fuel E000
+25 -
+warp 127 41 0 0
+fuel E000
+145 -

@@ -1,0 +1,48 @@
+# Items and pickups (economy.md 2.1, 2.3, 2.5; behaviour.md 3.3, 5.10, 6.1, 6.2), on level 0 with test setups: item N KIND X Y writes entry N of the items list (KIND in hex), obj SLOT STATE X Y FRAME INDEX puts a bonus object in an item slot.
+level 0
+dc 80
+3 -
+# Items that no list has, delivered at the mothership: kinds 7, 8, 13, 14 (messages "text 6, then kind + 6").
+item 2 7 635 205
+warp 635 175 480 80
+fuel E000
+60 -
+item 2 8 635 205
+warp 635 175 480 80
+fuel E000
+60 -
+item 2 D 635 205
+warp 635 175 480 80
+fuel E000
+60 -
+item 2 E 635 205
+warp 635 175 480 80
+fuel E000
+60 -
+# A box (state 25) and a star (state 24) touched by the pod: score, W gauge, the pickup tag D2 and the marker.
+warp 700 300 600 200
+fuel E000
+obj 13 25 704 306 64 82
+12 -
+obj 13 24 704 306 55 82
+12 -
+# A star and a box shot (the pod faces right and fires).
+warp 700 300 600 200
+fuel E000
+obj 13 24 740 300 55 82
+obj 12 25 790 300 64 82
+8 R
+1 A
+10 -
+1 A
+20 -
+# A star left alone lives 256 steps.
+warp 560 150 480 80
+fuel E000
+obj 13 24 600 150 55 82
+270 -
+# The special ring (kind 1A) restarts the level at a fixed place when touched.
+item 2 1A 400 300
+warp 392 300 300 200
+fuel E000
+40 -

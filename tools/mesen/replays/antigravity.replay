@@ -1,0 +1,21 @@
+# ANTI GRAVITY (weapon 2, player.md 4.7, 10.1): Select with A toggles it at no cost; while on, gravity is
+# skipped and the 16-bit weapon gauge drains $10 a step. On at step 4, thrust and a turn in the
+# floating pod, off again, a fall, on again with a plain A press (no Select) in between, and on
+# for the rest, through a landing.
+weapon 02
+dc 80
+3 -
+1 A SEL
+60 -
+30 B
+20 L
+30 B
+1 A SEL
+40 -
+10 A
+1 A SEL
+120 R
+60 B
+80 -
+1 A SEL
+60 -

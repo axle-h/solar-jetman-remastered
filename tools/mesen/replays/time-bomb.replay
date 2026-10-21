@@ -1,0 +1,16 @@
+# The time bomb (weapon 5, player.md 10.1, behaviour.md 5.11.3) on level 3, shield on. The pod is set
+# down beside a cluster of four turrets that spawn while off screen (warp = a test setup), then
+# moved into the cluster, drops the bomb (A with Select held), and waits for it to go off 129 to 160
+# steps later: the turrets within 64 px of it are destroyed (+5 each) and the bomb explodes too.
+level 3
+dc 80
+weapon 5
+keepfuel
+3 -
+1 D
+warp 1830 1640 1700 1500
+40 -
+warp 1830 1710 1700 1620
+4 -
+1 A SEL
+200 -

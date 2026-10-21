@@ -1,0 +1,19 @@
+# MOMENTUM KILLER (device 9, player.md 4.7): with B not held both speeds shrink by 0.20 towards 0 each step; the shield replay's arc with its thrust bursts and impacts.
+dc 80
+device 09
+3 -
+1 D
+2 -
+8 R
+8 B
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -

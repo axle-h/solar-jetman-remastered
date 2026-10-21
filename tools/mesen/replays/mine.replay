@@ -1,0 +1,47 @@
+# The pod flies down into the cavern of level 0 (shield on) and then gets no input for 1000
+# steps: the generator at (726, 675) makes a mine, which homes on the pod and is worn down by
+# touching it. Found by a search in src/game.
+dc 80
+3 -
+1 D
+8 B L
+8 B L
+8 -
+8 B R
+8 B
+8 B L
+8 B
+8 B
+8 B
+8 L
+8 B R
+8 R
+8 B L
+8 B
+8 B R
+8 B R
+8 R
+8 L
+8 R
+8 -
+8 R
+8 B R
+8 B
+8 B L
+8 B L
+8 B
+8 B
+8 B R
+8 L
+8 L
+8 B
+8 B R
+8 L
+8 B
+8 B
+8 B
+8 B
+8 B
+8 B
+8 B
+1000 -

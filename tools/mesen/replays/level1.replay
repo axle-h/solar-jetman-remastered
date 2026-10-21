@@ -1,0 +1,134 @@
+# Level 1 (planet 1): the pod, shield on, is set down beside each kind of object the level adds
+# (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off
+# screen so that it spawns), turns to face it, shoots (or not) and waits; the fuel is refilled and the pod
+# set down again every 100 steps. Magnets 1F (pull) and 20 (push), pillars 15 and 16 with their heads,
+# the turrets 01, 03, 04, 07, 09, 0A, 0D and 10, and the hoppers that the generators 4D and 4E make.
+level 1
+dc 80
+3 -
+1 D
+2 -
+# Magnets 1F and turret 0D: target (2863, 1014), the target lies right of the pod, which is set at (2806, 1071), camera (2592, 960)
+warp 2806 1071 2592 960
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 2806 1071 2592 960
+fuel E000
+100 -
+warp 2806 1071 2592 960
+fuel E000
+100 -
+warp 2806 1071 2592 960
+fuel E000
+100 -
+# Magnets 20 and turrets 10, 0A, 04, 01: target (2637, 2183), the target lies left of the pod, which is set at (2717, 2183), camera (2656, 2080)
+warp 2717 2183 2656 2080
+fuel E000
+8 L
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2717 2183 2656 2080
+fuel E000
+100 -
+warp 2717 2183 2656 2080
+fuel E000
+100 -
+warp 2717 2183 2656 2080
+fuel E000
+100 -
+warp 2717 2183 2656 2080
+fuel E000
+100 -
+# Pillar 15: target (2966, 2405), the target lies right of the pod, which is set at (2886, 2405), camera (2688, 2304)
+warp 2886 2405 2688 2304
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 2886 2405 2688 2304
+fuel E000
+100 -
+warp 2886 2405 2688 2304
+fuel E000
+100 -
+warp 2886 2405 2688 2304
+fuel E000
+100 -
+# Pillar 16: target (3309, 2805), the target lies right of the pod, which is set at (3229, 2805), camera (3040, 2688)
+warp 3229 2805 3040 2688
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 3229 2805 3040 2688
+fuel E000
+100 -
+warp 3229 2805 3040 2688
+fuel E000
+100 -
+warp 3229 2805 3040 2688
+fuel E000
+100 -
+# Generators 4D (hoppers): target (3125, 1977), the target lies right of the pod, which is set at (3025, 1977), camera (2848, 1856)
+warp 3025 1977 2848 1856
+fuel E000
+8 R
+1 A
+6 -
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+warp 3025 1977 2848 1856
+fuel E000
+150 -
+# Turret 07 and magnet 1F: target (452, 2175), the target lies below of the pod, which is set at (452, 2095), camera (320, 1920)
+warp 452 2095 320 1920
+fuel E000
+16 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 452 2095 320 1920
+fuel E000
+100 -
+warp 452 2095 320 1920
+fuel E000
+100 -

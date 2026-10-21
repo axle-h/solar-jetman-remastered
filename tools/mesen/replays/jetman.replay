@@ -1,0 +1,27 @@
+# The pod is destroyed (the tank is emptied in the middle of a hop on the ledge east of the
+# plateau, as floors-walls reaches it), Jetman climbs out, falls, lands, walks both ways, turns
+# round, shoots, takes off with the jetpack, steers in the air, shoots again and lands.
+5 -
+8 R
+8 B
+345 -
+fuel 0000
+40 -
+15 L
+10 -
+25 R
+5 -
+1 A
+10 R
+10 -
+1 B L
+20 B L
+10 B
+6 B R
+10 L
+2 A
+30 D R
+10 -
+30 L
+5 R
+20 -

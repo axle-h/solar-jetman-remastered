@@ -1,0 +1,14 @@
+# Flat floors and walls: a small push right off the mothership, a long slow arc, and a fall
+# onto the flat ledge east of the plateau (hopping there), then thrust left into the plateau's
+# wall and right again.
+5 -
+8 R
+8 B
+420 -
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -

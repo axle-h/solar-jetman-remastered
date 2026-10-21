@@ -1,0 +1,31 @@
+.idea/
+
+# Copyrighted material: the ROM, everything ripped from it, emulator state and captures
+# (see docs/CLEAN_ROOM.md)
+/vendor
+*.[Nn][Ee][Ss]
+*.[Uu][Nn][Ff]
+*.[Zz][Ii][Pp]
+*.7z
+*.mss
+*.mst
+*.chr
+*.sav
+*.wav
+shot-*
+ppu-writes.txt
+
+# Decompiler output never lives in this repository (it is in ../solar-jetman-dirty);
+# this is a safety net in case anything is copied here by mistake
+*.gpr
+*.rep/
+/analysis
+
+# Build output
+/target
+/dist
+
+# Claude Code agent worktrees
+/.claude/worktrees/
+/tools/scaled-lab/target
+/tools/scaled-lab/out

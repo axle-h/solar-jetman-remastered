@@ -1,0 +1,9 @@
+# A wormhole entry and a return (player.md 9.2, game-flow.md 7.4): planet 0 with the mothership's tank full (a test setup: the fuel count of items entry 0 set to 25), the pod set down on the wormhole. The gate state draws it in (193 steps), level 13 is entered at its wormhole, the pod is held there (set down again at rest), the guard refuses the touch for 64 steps, then the gate state again, and as planet 0's flag is clear the change leads back to planet 0, 128 px above the mothership, falling.
+level 0
+3 -
+item 0 19 635 194
+warp 932 716 800 640
+fuel E000
+247 -
+warp 127 41 0 0
+270 -

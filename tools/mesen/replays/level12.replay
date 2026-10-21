@@ -1,0 +1,471 @@
+# Level 12 (planet 12): the pod, shield on, is set down beside each kind of object the level has (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off screen so that it spawns), turns to face it, shoots twice and waits; the fuel is refilled and the pod set down again every 100 steps.
+level 12
+dc 80
+3 -
+1 D
+2 -
+#  index 0 type 01 at (291, 1256), the pod left
+warp 181 1256 33 1145
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 181 1256 33 1145
+fuel E000
+100 -
+warp 181 1256 33 1145
+fuel E000
+100 -
+#  index 14 type 01 at (553, 1526), the pod left
+warp 443 1526 295 1415
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 443 1526 295 1415
+fuel E000
+100 -
+warp 443 1526 295 1415
+fuel E000
+100 -
+#  index 28 type 01 at (2372, 984), the pod left
+warp 2262 984 2114 873
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2262 984 2114 873
+fuel E000
+100 -
+warp 2262 984 2114 873
+fuel E000
+100 -
+#  index 4 type 01 at (3500, 600), the pod left
+warp 3390 600 3242 489
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3390 600 3242 489
+fuel E000
+100 -
+warp 3390 600 3242 489
+fuel E000
+100 -
+#  index 55 type 01 at (1323, 2392), the pod left
+warp 1213 2392 1065 2281
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1213 2392 1065 2281
+fuel E000
+100 -
+warp 1213 2392 1065 2281
+fuel E000
+100 -
+#  index 41 type 02 at (3454, 894), the pod left
+warp 3344 894 3196 783
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3344 894 3196 783
+fuel E000
+100 -
+warp 3344 894 3196 783
+fuel E000
+100 -
+#  index 17 type 03 at (1009, 2293), the pod left
+warp 899 2293 751 2182
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 899 2293 751 2182
+fuel E000
+100 -
+warp 899 2293 751 2182
+fuel E000
+100 -
+#  index 27 type 03 at (2346, 978), the pod left
+warp 2236 978 2088 867
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2236 978 2088 867
+fuel E000
+100 -
+warp 2236 978 2088 867
+fuel E000
+100 -
+#  index 20 type 04 at (3681, 944), the pod left
+warp 3571 944 3423 833
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3571 944 3423 833
+fuel E000
+100 -
+warp 3571 944 3423 833
+fuel E000
+100 -
+#  index 5 type 04 at (3416, 596), the pod left
+warp 3306 596 3158 485
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3306 596 3158 485
+fuel E000
+100 -
+warp 3306 596 3158 485
+fuel E000
+100 -
+#  index 22 type 05 at (3604, 878), the pod left
+warp 3494 878 3346 767
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3494 878 3346 767
+fuel E000
+100 -
+warp 3494 878 3346 767
+fuel E000
+100 -
+#  index 53 type 05 at (593, 2097), the pod left
+warp 483 2097 335 1986
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 483 2097 335 1986
+fuel E000
+100 -
+warp 483 2097 335 1986
+fuel E000
+100 -
+#  index 33 type 07 at (786, 653), the pod left
+warp 676 653 528 542
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 676 653 528 542
+fuel E000
+100 -
+warp 676 653 528 542
+fuel E000
+100 -
+#  index 38 type 08 at (1868, 1941), the pod left
+warp 1758 1941 1610 1830
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1758 1941 1610 1830
+fuel E000
+100 -
+warp 1758 1941 1610 1830
+fuel E000
+100 -
+#  index 6 type 0A at (3582, 515), the pod left
+warp 3472 515 3324 404
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3472 515 3324 404
+fuel E000
+100 -
+warp 3472 515 3324 404
+fuel E000
+100 -
+#  index 12 type 0C at (2436, 1895), the pod left
+warp 2326 1895 2178 1784
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2326 1895 2178 1784
+fuel E000
+100 -
+warp 2326 1895 2178 1784
+fuel E000
+100 -
+#  index 39 type 0F at (2910, 1204), the pod left
+warp 2800 1204 2652 1093
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2800 1204 2652 1093
+fuel E000
+100 -
+warp 2800 1204 2652 1093
+fuel E000
+100 -
+#  index 50 type 0F at (206, 855), the pod left
+warp 96 855 0 744
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 96 855 0 744
+fuel E000
+100 -
+warp 96 855 0 744
+fuel E000
+100 -
+#  index 56 type 0D at (1010, 1807), the pod left
+warp 900 1807 752 1696
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 900 1807 752 1696
+fuel E000
+100 -
+warp 900 1807 752 1696
+fuel E000
+100 -
+#  index 52 type 0E at (370, 1771), the pod left
+warp 260 1771 112 1660
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 260 1771 112 1660
+fuel E000
+100 -
+warp 260 1771 112 1660
+fuel E000
+100 -
+#  index 29 type 1F at (998, 1305), the pod left
+warp 888 1305 740 1194
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 888 1305 740 1194
+fuel E000
+100 -
+warp 888 1305 740 1194
+fuel E000
+100 -
+#  index 7 type 1F at (3620, 673), the pod left
+warp 3510 673 3362 562
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3510 673 3362 562
+fuel E000
+100 -
+warp 3510 673 3362 562
+fuel E000
+100 -
+#  index 10 type 20 at (702, 1674), the pod left
+warp 592 1674 444 1563
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 592 1674 444 1563
+fuel E000
+100 -
+warp 592 1674 444 1563
+fuel E000
+100 -
+#  index 46 type 20 at (2844, 637), the pod left
+warp 2734 637 2586 526
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2734 637 2586 526
+fuel E000
+100 -
+warp 2734 637 2586 526
+fuel E000
+100 -
+#  index 32 type 22 at (2820, 2070), the pod left
+warp 2710 2070 2562 1959
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2710 2070 2562 1959
+fuel E000
+100 -
+warp 2710 2070 2562 1959
+fuel E000
+100 -
+#  index 68 type 22 at (3218, 2173), the pod left
+warp 3108 2173 2960 2062
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3108 2173 2960 2062
+fuel E000
+100 -
+warp 3108 2173 2960 2062
+fuel E000
+100 -
+#  index 69 type 22 at (3162, 1691), the pod left
+warp 3052 1691 2904 1580
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3052 1691 2904 1580
+fuel E000
+100 -
+warp 3052 1691 2904 1580
+fuel E000
+100 -
+#  index 64 type 48 at (2807, 1738), the pod left
+warp 2697 1738 2549 1627
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2697 1738 2549 1627
+fuel E000
+100 -
+warp 2697 1738 2549 1627
+fuel E000
+100 -
+#  index 1 type 49 at (176, 1288), the pod left
+warp 66 1288 0 1177
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 66 1288 0 1177
+fuel E000
+100 -
+warp 66 1288 0 1177
+fuel E000
+100 -
+#  index 18 type 49 at (1097, 2259), the pod left
+warp 987 2259 839 2148
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 987 2259 839 2148
+fuel E000
+100 -
+warp 987 2259 839 2148
+fuel E000
+100 -
+#  index 9 type 48 at (877, 1609), the pod left
+warp 767 1609 619 1498
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 767 1609 619 1498
+fuel E000
+100 -
+warp 767 1609 619 1498
+fuel E000
+100 -

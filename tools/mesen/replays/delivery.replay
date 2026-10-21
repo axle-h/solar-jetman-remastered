@@ -1,0 +1,1294 @@
+# Delivery: the pod flies to the fuel cell at the east of the start area, catches it, tows it round
+# the plateau's west side (shooting the mines and the turret on the way) and in above the mothership,
+# which takes it in: the fuel count reaches 25 (transition 1, economy.md 2.2-2.3, 3.4). Play resumes
+# after the message screen and the pod falls for 60 steps. No thrust while the item is taken in.
+23 -
+10 L
+2 B L
+6 B
+1 B L
+18 B
+1 B L
+3 B
+1 B L
+3 B
+2 L
+1 B L
+10 L
+1 B L
+2 L
+1 B L
+2 L
+4 R
+1 -
+1 B L
+1 R
+2 L
+1 R
+1 L
+2 -
+1 B
+3 L
+6 R
+1 B R
+1 R
+6 L
+1 B L
+1 L
+2 R
+1 -
+1 B
+3 R
+1 L
+2 -
+1 B
+4 L
+2 R
+1 -
+1 B
+3 R
+1 -
+3 R
+1 B R
+7 L
+2 B L
+11 R
+2 B R
+1 B L
+7 L
+4 R
+1 B L
+2 L
+1 B L
+1 R
+3 L
+7 R
+2 B R
+3 B
+1 L
+1 B R
+1 B L
+10 L
+3 B L
+3 B
+1 R
+1 B R
+2 R
+1 -
+1 L
+2 B L
+2 L
+2 B R
+4 R
+1 B R
+7 R
+1 B R
+1 -
+3 L
+1 B L
+3 L
+4 R
+1 B R
+9 L
+2 B L
+1 B
+1 B R
+1 B L
+1 B
+11 R
+3 B R
+1 B L
+2 B
+5 L
+1 R
+2 B R
+1 L
+1 R
+1 B R
+1 R
+2 L
+1 B R
+2 L
+1 B
+3 L
+1 R
+1 B R
+9 L
+2 B L
+1 B
+1 B R
+4 B
+1 R
+1 B R
+1 R
+1 L
+2 B L
+4 R
+1 B
+7 R
+1 B
+1 R
+9 L
+2 B L
+1 B R
+1 B L
+1 B R
+10 R
+2 B R
+5 B
+1 B L
+3 B
+1 B L
+6 B
+1 B L
+7 B
+1 B L
+4 B
+1 B L
+1 B
+1 B L
+7 L
+1 B L
+1 R
+5 L
+2 B L
+1 -
+1 B R
+1 B L
+1 B R
+1 B
+5 R
+1 L
+2 B L
+1 L
+2 B
+3 R
+2 B L
+3 R
+1 B
+5 R
+2 L
+1 B L
+1 L
+7 R
+3 B R
+1 B L
+1 L
+2 B R
+1 B L
+1 L
+1 B
+2 L
+1 R
+2 B R
+2 L
+1 B L
+1 R
+1 B R
+1 R
+4 L
+1 R
+1 B R
+1 B
+1 -
+1 L
+1 -
+1 L
+1 R
+2 B R
+1 B
+1 B L
+1 B
+1 R
+1 B L
+1 L
+1 B R
+3 B
+2 R
+2 L
+1 B L
+5 B
+1 B L
+1 -
+1 B
+1 B R
+1 L
+1 B L
+1 R
+1 B
+1 R
+1 L
+1 -
+1 L
+1 B R
+1 B L
+2 R
+1 -
+1 B L
+3 L
+1 B R
+3 R
+1 -
+1 B
+2 L
+1 B L
+4 R
+1 L
+1 B L
+2 L
+1 -
+1 B
+4 R
+1 -
+1 L
+1 B L
+1 L
+1 -
+1 B
+14 R
+12 L
+3 B L
+8 L
+7 R
+1 B R
+11 R
+7 L
+1 B L
+1 L
+1 B L
+4 L
+1 R
+3 B R
+1 B
+1 B L
+4 B
+1 R
+1 B
+2 B L
+2 L
+1 B R
+1 R
+1 B
+1 B R
+3 R
+1 L
+1 R
+1 L
+1 B L
+1 L
+1 B L
+1 L
+2 R
+1 -
+1 B L
+1 B
+11 R
+2 B R
+1 R
+2 B R
+1 B L
+5 R
+4 L
+1 B
+1 B L
+15 R
+2 B R
+7 B
+1 B R
+1 B
+1 B L
+1 B R
+2 B
+1 B R
+3 L
+1 B
+6 R
+1 B
+5 L
+1 B L
+6 R
+1 -
+1 B L
+4 L
+2 -
+1 B R
+4 R
+2 L
+1 -
+1 B
+4 L
+1 R
+1 -
+1 B R
+4 R
+2 L
+1 -
+1 B
+4 L
+1 R
+1 -
+1 B R
+4 R
+2 L
+1 -
+1 B
+4 L
+1 R
+1 -
+1 B R
+4 R
+2 L
+1 -
+1 B
+4 L
+1 R
+1 -
+1 B R
+4 R
+1 L
+2 R
+1 -
+1 B L
+4 L
+11 R
+2 B R
+1 B
+1 B R
+2 B
+1 B R
+1 L
+1 B
+13 L
+2 B L
+1 B
+1 B R
+2 B
+1 B L
+1 B
+1 B R
+1 B L
+1 R
+2 B L
+3 B
+7 R
+1 B R
+7 L
+3 B L
+1 B R
+1 B L
+1 B R
+2 B
+1 B L
+3 B
+10 R
+2 B R
+1 B
+1 R
+2 L
+1 B L
+2 L
+14 R
+2 B R
+5 B
+1 B L
+1 A B L
+1 A L
+1 L
+1 B
+1 A B
+2 A B R
+2 B L
+1 B
+1 A B R
+1 A B L
+1 A L
+2 A B R
+1 B R
+2 A R
+1 A B
+1 A R
+1 R
+1 A R
+2 R
+2 A
+1 A B R
+1 A B L
+1 B L
+1 A R
+1 A B L
+1 A B
+2 B L
+3 L
+1 A B
+1 B R
+1 A R
+1 A L
+1 A B
+1 A B R
+1 B R
+1 A B R
+1 B
+1 A R
+1 A B R
+2 A
+1 B L
+1 R
+1 A B L
+1 A R
+1 B R
+2 A B L
+3 A B R
+1 B L
+1 A B R
+2 B R
+1 A L
+1 B
+1 A B L
+1 B R
+1 B
+1 A B R
+1 A B L
+1 B L
+1 B
+1 A B L
+2 B L
+1 B R
+2 A R
+1 -
+1 B R
+1 L
+1 B
+1 A B L
+1 A B R
+1 B
+1 B L
+1 -
+1 B
+1 A B R
+1 A B
+1 A
+2 A R
+1 R
+1 A B
+1 A R
+1 A
+1 R
+1 A
+1 L
+1 A
+1 -
+1 A
+1 A R
+1 -
+1 L
+1 R
+1 A
+1 -
+1 A L
+1 A
+2 R
+2 A R
+2 A B R
+2 B R
+1 R
+1 -
+1 A R
+1 -
+1 A R
+1 A B
+1 A L
+1 B L
+1 B R
+1 L
+1 A B
+1 A B L
+1 B
+1 A B
+1 B
+1 A L
+1 A B R
+1 B R
+2 L
+1 A
+1 R
+1 A L
+1 L
+1 A L
+1 A
+1 R
+1 L
+1 A L
+1 B
+1 -
+1 A
+1 A B
+2 R
+1 L
+1 -
+1 B L
+1 R
+1 L
+1 R
+1 B R
+1 A B L
+1 R
+1 B L
+1 A L
+2 B L
+1 A B L
+1 B L
+1 A B L
+1 R
+1 A R
+1 A B L
+1 B L
+1 A B L
+1 A B R
+1 B R
+1 A B R
+2 A L
+1 B
+1 R
+1 A B R
+2 B L
+2 B
+1 B L
+1 A B
+2 A B L
+1 B
+1 A B L
+1 B R
+1 A B L
+2 B L
+1 A B R
+1 B R
+1 A B L
+1 A R
+2 A B L
+1 B L
+1 L
+1 B R
+1 A B L
+2 B L
+1 A L
+1 A
+1 A R
+1 A
+1 A B L
+1 A B
+2 A L
+1 B L
+1 B R
+1 A R
+1 -
+1 A R
+1 A B R
+1 B R
+1 A
+1 R
+2 A
+2 A R
+1 A
+1 A R
+4 R
+2 A
+1 -
+2 L
+1 A
+1 R
+1 A
+2 R
+1 A R
+1 A
+1 L
+2 A L
+2 A
+1 -
+1 A L
+1 L
+1 B L
+1 A B L
+1 L
+1 A B R
+2 B
+1 B R
+2 R
+1 L
+1 A B L
+1 L
+1 A
+1 -
+2 A R
+1 A L
+1 R
+1 B R
+1 A
+1 R
+1 B L
+1 R
+1 L
+2 R
+1 A L
+2 R
+1 B R
+1 A
+1 B R
+1 B
+2 -
+1 R
+1 A B L
+1 B
+1 B L
+2 L
+1 A L
+1 -
+2 A L
+1 A
+1 A R
+1 R
+2 -
+1 L
+1 A
+1 -
+1 R
+1 B R
+1 B L
+1 A B L
+1 B
+1 L
+1 A
+1 B R
+1 B L
+1 B
+1 A
+1 A B R
+1 B R
+1 A R
+1 B R
+2 B
+1 A B R
+1 A L
+2 B L
+1 A
+1 A B R
+2 -
+1 A B R
+2 B R
+1 A B R
+1 B L
+1 A B
+1 B L
+1 -
+1 A B
+1 A B R
+2 B L
+1 B
+1 A B R
+1 A B
+1 A B L
+1 A B
+1 A
+2 A B R
+1 B R
+1 B L
+1 B
+1 A B
+1 A B R
+1 B L
+1 A B
+1 A B L
+1 A B R
+1 B L
+1 B R
+2 B L
+2 B R
+1 A B
+1 L
+1 B
+1 B L
+1 A B
+1 B L
+1 A R
+1 R
+2 A
+1 R
+1 B L
+1 A B
+1 R
+1 A B R
+1 R
+1 -
+1 A B R
+1 B
+1 A B
+1 B
+1 R
+1 B R
+1 R
+1 A B
+1 A R
+1 B R
+1 B L
+1 A B L
+1 B
+1 R
+1 B
+2 A B L
+1 B
+1 A R
+1 B L
+1 B R
+1 A B R
+2 B L
+1 A B L
+2 R
+1 A B R
+1 B L
+1 A B L
+1 A B R
+2 B L
+1 L
+1 A L
+2 B L
+1 B
+1 A L
+1 -
+1 A
+1 B
+1 A B
+1 B
+1 A B R
+1 A B L
+1 A R
+1 B
+1 B R
+1 A B L
+1 B R
+1 L
+1 B
+1 A B
+1 B L
+1 A B
+3 A B R
+2 A R
+2 B R
+1 A B L
+1 B
+1 L
+4 A L
+1 R
+1 A B L
+1 A R
+1 -
+1 R
+1 A R
+1 -
+1 A
+1 -
+2 L
+1 B L
+1 A B L
+1 B L
+3 A B L
+1 A
+1 L
+1 -
+1 A B L
+1 B L
+1 A B R
+1 A L
+1 B R
+2 A B
+1 A B L
+1 A B
+1 B L
+1 A B R
+1 A R
+1 A B L
+3 A R
+1 R
+1 A R
+3 R
+1 A R
+1 A B R
+1 A R
+1 R
+1 A
+1 R
+1 -
+1 A B
+1 R
+1 B R
+2 A L
+1 B
+2 B R
+1 A B R
+1 L
+2 B L
+1 L
+1 B L
+1 B
+1 A L
+1 L
+1 R
+2 -
+1 A L
+1 A B L
+1 A
+1 -
+1 R
+1 A L
+1 L
+1 A
+1 A B L
+2 A
+1 A L
+1 A R
+1 L
+1 R
+1 L
+3 -
+1 L
+1 R
+1 A R
+2 R
+1 B R
+1 A R
+2 -
+1 A R
+1 A
+1 A R
+1 A
+1 -
+3 A R
+1 R
+1 A
+2 L
+1 -
+1 L
+1 A L
+1 -
+1 A R
+2 L
+1 R
+1 A L
+1 -
+1 R
+1 L
+1 A B
+1 R
+1 A L
+2 A B
+1 -
+1 A B R
+1 B
+1 A R
+1 R
+1 -
+2 A R
+1 -
+2 L
+1 R
+1 A L
+1 R
+1 A R
+1 B
+1 A B L
+1 B R
+1 A B R
+1 A B L
+1 B L
+1 B
+1 A B R
+1 B
+1 A B R
+1 B L
+1 A B
+1 A B L
+1 B
+1 A B
+1 A
+1 B
+1 B R
+1 B
+1 A B R
+1 B L
+1 A B L
+1 A L
+1 A R
+1 A B L
+1 A L
+1 A R
+1 B L
+1 B
+1 B R
+1 -
+1 A B
+1 -
+1 A B
+1 R
+1 A B R
+1 A B L
+1 A B
+1 B L
+1 A B L
+1 -
+1 R
+1 B R
+1 A B L
+1 -
+1 B L
+1 A
+2 L
+1 A
+2 A L
+2 A
+1 -
+1 A R
+1 A L
+1 A B L
+1 A B
+1 A L
+2 R
+1 A B L
+1 B
+2 R
+1 B L
+1 A L
+1 A B L
+1 B
+1 A R
+1 A B L
+1 B R
+1 A R
+1 A B R
+1 R
+1 A R
+1 B R
+1 R
+1 A L
+2 A R
+1 -
+1 B
+1 A R
+1 B R
+1 L
+1 A B L
+1 B R
+1 A B L
+1 A B
+2 B
+1 -
+1 A B R
+1 A B L
+1 R
+1 A R
+2 R
+1 A L
+1 R
+1 A
+1 A B R
+1 A L
+1 L
+1 A L
+1 B L
+1 A B L
+1 A B R
+1 B L
+1 L
+1 B L
+1 A L
+1 A B L
+1 B L
+1 A L
+1 A B L
+1 B L
+1 A B
+1 B L
+1 B
+1 A B
+1 B
+1 A B L
+1 A B R
+1 B R
+1 A B R
+1 A L
+1 A R
+1 A B
+1 B
+1 A R
+1 B R
+2 A B R
+2 A B
+1 B L
+1 L
+1 B
+1 B L
+1 L
+1 A B L
+1 A
+1 B R
+1 A B L
+1 B R
+1 R
+1 B R
+1 -
+1 A R
+1 A
+1 A B R
+1 R
+1 A B R
+1 A R
+1 A B L
+1 R
+1 A R
+2 A B
+2 B L
+1 A B L
+1 L
+1 A B L
+1 A B R
+1 B L
+1 L
+1 A L
+1 A B L
+1 A B
+1 B L
+1 B R
+1 A B
+1 B
+1 A L
+2 A B L
+2 R
+1 B R
+1 A B R
+1 A R
+1 -
+1 R
+1 -
+1 B R
+1 A B
+1 A B L
+1 R
+1 A R
+2 B R
+1 L
+1 A B
+3 A L
+1 A B L
+1 L
+2 B L
+1 A L
+1 A
+1 A L
+2 R
+1 A
+1 A R
+1 A
+1 L
+1 A B R
+2 L
+1 A B R
+2 A
+2 A R
+1 A B R
+4 A R
+2 B R
+1 A B R
+2 A R
+1 R
+1 B R
+1 A
+1 -
+1 A R
+1 A
+1 -
+1 A B L
+1 L
+1 A L
+1 L
+3 A L
+1 R
+2 A L
+1 L
+1 -
+1 A
+1 A L
+1 A B L
+1 L
+1 A L
+1 L
+1 R
+1 L
+1 A B R
+1 B L
+1 B R
+1 B
+1 A B R
+2 A R
+1 R
+1 -
+2 R
+1 A R
+1 A L
+1 A
+1 -
+2 A R
+1 R
+1 A R
+3 R
+1 A R
+1 A
+2 -
+1 A B L
+1 A L
+1 B
+1 L
+1 B L
+1 A B L
+1 L
+2 A L
+2 -
+1 A
+1 A L
+1 -
+1 L
+2 A
+1 A L
+1 A
+2 R
+1 A L
+1 A R
+2 L
+1 B R
+1 A R
+1 A
+1 A B R
+1 B R
+1 A B L
+1 A L
+3 L
+1 A L
+1 A B L
+1 L
+1 B L
+1 B
+1 A B
+1 A B R
+1 A B
+1 A R
+1 A
+1 A R
+1 B L
+1 L
+2 B L
+1 L
+1 R
+1 -
+3 A L
+1 A
+2 R
+1 -
+1 A R
+1 A B R
+1 A R
+1 -
+1 R
+1 -
+1 A L
+1 B
+1 B R
+1 B L
+1 A B
+1 B R
+1 A B R
+1 A R
+2 B R
+1 -
+1 A B
+1 A R
+1 B R
+1 A L
+1 A B
+1 A R
+1 A B L
+1 L
+2 R
+2 A R
+1 -
+1 B
+1 A B L
+1 A L
+1 -
+1 A L
+1 L
+1 -
+1 R
+2 L
+1 A L
+1 A B L
+1 A L
+1 B L
+2 A R
+1 L
+1 A B R
+1 B L
+1 A
+1 B
+1 B L
+1 B R
+1 A R
+1 R
+1 A B R
+2 R
+1 A R
+2 A B R
+2 A R
+2 R
+2 B R
+1 R
+1 A B L
+1 A B R
+1 B
+1 A B
+1 A R
+1 A B L
+1 B L
+1 B R
+1 B L
+1 A B
+1 A
+1 B R
+1 B L
+1 A
+1 A B R
+2 B
+1 A R
+1 A B R
+1 -
+1 A B R
+1 B R
+1 A
+1 A R
+1 R
+2 -
+1 A L
+2 L
+1 -
+2 R
+1 A R
+1 A
+1 A R
+1 -
+1 L
+1 A R
+1 L
+1 -
+1 A L
+4 -
+1 L
+2 A L
+1 L
+1 A R
+1 -
+60 -

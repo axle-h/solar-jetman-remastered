@@ -1,0 +1,45 @@
+# Military bullets (bullet upgrade 2): shots have 3 hit points; the shoot-turret replay's arc.
+dc 80
+bullet 02
+3 -
+1 D
+8 A
+8 R
+8 R
+8 B R
+8 B R
+8 B R
+8 B
+8 A B
+8 B L
+8 B
+8 A L
+8 L
+8 A L
+8 B
+8 R
+8 B R
+8 B R
+8 B L
+8 A L
+8 R
+8 A B
+8 A L
+8 B R
+8 R
+8 B R
+8 B
+8 A B
+8 R
+8 A B
+8 R
+8 B L
+8 L
+8 A B
+8 A B
+8 A B
+8 B
+8 B R
+8 -
+8 A L
+8 B

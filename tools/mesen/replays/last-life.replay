@@ -1,0 +1,13 @@
+# With one life left, Jetman's death ends the game (player.md 7.2): the pod is destroyed on the
+# ledge, Jetman lands and is killed, and 96 steps later the game is over.
+lives 1
+5 -
+8 R
+8 B
+345 -
+fuel 0000
+60 -
+10 R
+fuel 0000
+110 -
+200 -

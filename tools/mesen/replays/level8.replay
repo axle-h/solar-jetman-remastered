@@ -1,0 +1,119 @@
+# Level 8 (planet 8): the pod, shield on, is set down beside the objects the level adds (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off screen so that it spawns); the fuel is refilled and the pod set down again every 100 steps. Ground-gun pairs 17 and 18 with their barrier flames, a lone 18, the blue spheres 4A and their shots, the hopper generators 4D and 4E, and a shuttling creature 21.
+level 8
+dc 80
+3 -
+1 D
+2 -
+# Gun pair 17/18 (indexes 30 and 29), the pod left of it, facing right: the floor gun makes the flames
+warp 2433 1800 2285 1689
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 2433 1800 2285 1689
+fuel E000
+100 -
+warp 2433 1800 2285 1689
+fuel E000
+100 -
+# The same pair from the right, level with the floor gun: its shot comes from the front and destroys it, the ceiling gun acts alone
+warp 2653 1838 2544 1727
+fuel E000
+8 L
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2653 1838 2544 1727
+fuel E000
+100 -
+warp 2653 1838 2544 1727
+fuel E000
+100 -
+# Gun pair 17/18 (indexes 18 and 17) 82 px apart
+warp 4322 1785 4174 1674
+fuel E000
+8 R
+100 -
+warp 4322 1785 4174 1674
+fuel E000
+100 -
+warp 4322 1785 4174 1674
+fuel E000
+100 -
+# Gun 18 alone (index 19)
+warp 3960 1529 3812 1418
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 3960 1529 3812 1418
+fuel E000
+100 -
+# Blue sphere 4A (index 10)
+warp 2336 2625 2188 2514
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2336 2625 2188 2514
+fuel E000
+100 -
+warp 2336 2625 2188 2514
+fuel E000
+100 -
+warp 2336 2625 2188 2514
+fuel E000
+100 -
+# Hopper generator 4E (index 15)
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+warp 1198 1923 1050 1812
+fuel E000
+100 -
+# Creature 21 (index 75)
+warp 2256 1279 2108 1168
+fuel E000
+8 R
+1 A
+6 -
+100 -
+warp 2256 1279 2108 1168
+fuel E000
+100 -
+warp 2256 1279 2108 1168
+fuel E000
+100 -

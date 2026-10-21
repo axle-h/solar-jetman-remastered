@@ -1,0 +1,377 @@
+# Level 10 (planet 10): the pod, shield on, is set down beside each kind of object the level has (warp = a test setup: the pod at rest at X, Y and the camera at CX, CY, with the object just off screen so that it spawns), turns to face it, shoots twice and waits; the fuel is refilled and the pod set down again every 100 steps.
+level 10
+dc 80
+3 -
+1 D
+2 -
+#  index 1 type 01 at (1745, 1705), the pod left
+warp 1635 1705 1487 1594
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1635 1705 1487 1594
+fuel E000
+100 -
+warp 1635 1705 1487 1594
+fuel E000
+100 -
+#  index 0 type 04 at (1830, 1717), the pod left
+warp 1720 1717 1572 1606
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1720 1717 1572 1606
+fuel E000
+100 -
+warp 1720 1717 1572 1606
+fuel E000
+100 -
+#  index 10 type 03 at (435, 1701), the pod left
+warp 325 1701 177 1590
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 325 1701 177 1590
+fuel E000
+100 -
+warp 325 1701 177 1590
+fuel E000
+100 -
+#  index 15 type 05 at (1434, 1124), the pod left
+warp 1324 1124 1176 1013
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1324 1124 1176 1013
+fuel E000
+100 -
+warp 1324 1124 1176 1013
+fuel E000
+100 -
+#  index 24 type 10 at (3066, 745), the pod left
+warp 2956 745 2808 634
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2956 745 2808 634
+fuel E000
+100 -
+warp 2956 745 2808 634
+fuel E000
+100 -
+#  index 27 type 1F at (3087, 995), the pod left
+warp 2977 995 2829 884
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2977 995 2829 884
+fuel E000
+100 -
+warp 2977 995 2829 884
+fuel E000
+100 -
+#  index 29 type 20 at (3050, 1031), the pod left
+warp 2940 1031 2792 920
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2940 1031 2792 920
+fuel E000
+100 -
+warp 2940 1031 2792 920
+fuel E000
+100 -
+#  index 30 type 1F at (3313, 2311), the pod left
+warp 3203 2311 3055 2200
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3203 2311 3055 2200
+fuel E000
+100 -
+warp 3203 2311 3055 2200
+fuel E000
+100 -
+#  index 19 type 0D at (2478, 980), the pod left
+warp 2368 980 2220 869
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2368 980 2220 869
+fuel E000
+100 -
+warp 2368 980 2220 869
+fuel E000
+100 -
+#  index 68 type 1A at (2114, 868), the pod left
+warp 2004 868 1856 757
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2004 868 1856 757
+fuel E000
+100 -
+warp 2004 868 1856 757
+fuel E000
+100 -
+#  index 56 type 1E at (3874, 83), the pod left
+warp 3764 83 3616 0
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3764 83 3616 0
+fuel E000
+100 -
+warp 3764 83 3616 0
+fuel E000
+100 -
+#  index 61 type 1C at (4189, 1397), the pod left
+warp 4079 1397 3931 1286
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 4079 1397 3931 1286
+fuel E000
+100 -
+warp 4079 1397 3931 1286
+fuel E000
+100 -
+#  index 34 type 60 at (3494, 2458), the pod left
+warp 3384 2458 3236 2347
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3384 2458 3236 2347
+fuel E000
+100 -
+warp 3384 2458 3236 2347
+fuel E000
+100 -
+#  index 51 type 48 at (4687, 950), the pod left
+warp 4577 950 4429 839
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 4577 950 4429 839
+fuel E000
+100 -
+warp 4577 950 4429 839
+fuel E000
+100 -
+#  index 53 type 49 at (4898, 118), the pod left
+warp 4788 118 4640 7
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 4788 118 4640 7
+fuel E000
+100 -
+warp 4788 118 4640 7
+fuel E000
+100 -
+#  index 21 type 4A at (3022, 284), the pod left
+warp 2912 284 2764 173
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2912 284 2764 173
+fuel E000
+100 -
+warp 2912 284 2764 173
+fuel E000
+100 -
+#  index 37 type 4A at (3484, 1032), the pod left
+warp 3374 1032 3226 921
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3374 1032 3226 921
+fuel E000
+100 -
+warp 3374 1032 3226 921
+fuel E000
+100 -
+#  index 65 type 4A at (3326, 1742), the pod left
+warp 3216 1742 3068 1631
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 3216 1742 3068 1631
+fuel E000
+100 -
+warp 3216 1742 3068 1631
+fuel E000
+100 -
+#  index 55 type 19 at (4517, 485), the pod left
+warp 4407 485 4259 374
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 4407 485 4259 374
+fuel E000
+100 -
+warp 4407 485 4259 374
+fuel E000
+100 -
+#  index 44 type 08 at (1501, 1428), the pod left
+warp 1391 1428 1243 1317
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1391 1428 1243 1317
+fuel E000
+100 -
+warp 1391 1428 1243 1317
+fuel E000
+100 -
+#  index 17 type 0D at (2546, 906), the pod left
+warp 2436 906 2288 795
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 2436 906 2288 795
+fuel E000
+100 -
+warp 2436 906 2288 795
+fuel E000
+100 -
+#  index 3 type 0D at (1713, 1614), the pod left
+warp 1603 1614 1455 1503
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1603 1614 1455 1503
+fuel E000
+100 -
+warp 1603 1614 1455 1503
+fuel E000
+100 -
+#  index 80 type 08 at (1614, 1186), the pod left
+warp 1504 1186 1356 1075
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 1504 1186 1356 1075
+fuel E000
+100 -
+warp 1504 1186 1356 1075
+fuel E000
+100 -
+#  index 82 type 03 at (702, 52), the pod left
+warp 592 52 444 0
+fuel E000
+8 R
+1 A
+6 -
+1 A
+6 -
+100 -
+warp 592 52 444 0
+fuel E000
+100 -
+warp 592 52 444 0
+fuel E000
+100 -
+# Satellite 60 and its companion 61 (indexes 34 and 33), the pod facing right with the gun held down: the satellite is shot, the companion finds none four times, chases the pod and joins its service (phase 5): it fires at the objects near and circles the pod
+warp 3384 2458 3236 2347
+fuel E000
+8 R
+400 A
+fuel E000
+400 A
+fuel E000
+400 A
+fuel E000
+300 -

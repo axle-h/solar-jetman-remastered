@@ -1,0 +1,19 @@
+# EFFICIENT ENGINES (device 0A, player.md 4.5): thrust costs 1 unit a step instead of 2; the shield replay's arc.
+dc 80
+device 0A
+3 -
+1 D
+2 -
+8 R
+8 B
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -

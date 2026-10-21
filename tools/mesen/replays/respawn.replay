@@ -1,0 +1,16 @@
+# The pod is destroyed on the ledge as in jetman.replay, Jetman lands and is then killed (the
+# tank is emptied again); 96 steps later the level restarts with lives left, a new pod
+# materialises where he died (particles circle in), and the new pod flies off.
+5 -
+8 R
+8 B
+345 -
+fuel 0000
+60 -
+10 R
+fuel 0000
+110 -
+80 -
+8 B
+30 B L
+20 -

@@ -1,0 +1,46 @@
+# Shooting on level 0 with the shield on and A held for autofire: a turret is hit while open and
+# destroyed (a medium explosion, score +5), found by a search in src/game; turret shots, sparks
+# and the item scan go on around it.
+dc 80
+3 -
+1 D
+8 A
+8 R
+8 R
+8 B R
+8 B R
+8 B R
+8 B
+8 A B
+8 B L
+8 B
+8 A L
+8 L
+8 A L
+8 B
+8 R
+8 B R
+8 B R
+8 B L
+8 A L
+8 R
+8 A B
+8 A L
+8 B R
+8 R
+8 B R
+8 B
+8 A B
+8 R
+8 A B
+8 R
+8 B L
+8 L
+8 A B
+8 A B
+8 A B
+8 B
+8 B R
+8 -
+8 A L
+8 B

@@ -1,0 +1,18 @@
+# Boosters (dc C0 = shields and boosters, player.md 4.4, 4.5): Select with B gives the full table value and costs 16 a step; the shield replay's arc with Select added to its thrust.
+dc C0
+3 -
+1 D
+2 -
+8 R
+8 B SEL
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B SEL
+40 -
+8 R
+2 R
+12 B SEL
+60 -

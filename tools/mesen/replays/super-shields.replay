@@ -1,0 +1,19 @@
+# SUPER SHIELDS (device 8, player.md 4.7, 5.4): the shield replay's arc, so shielded impacts cost half again.
+dc 80
+device 08
+3 -
+1 D
+2 -
+8 R
+8 B
+420 -
+1 U
+15 -
+1 D
+8 L
+10 B
+40 -
+8 R
+2 R
+12 B
+60 -
