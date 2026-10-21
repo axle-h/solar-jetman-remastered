@@ -11,18 +11,18 @@ use super::pod::{
 
 /// Frames of Jetman (player.md 2): the walk cycle by position, the three flying poses, the
 /// shooting pose.
-const WALK: [u8; 4] = [0x25, 0x26, 0x27, 0x26];
-const POSE_SHOOT: u8 = 0x28;
-const POSE_UP: u8 = 0x29;
-const POSE_DOWN: u8 = 0x2A;
+pub(crate) const WALK: [u8; 4] = [0x25, 0x26, 0x27, 0x26];
+pub(crate) const POSE_SHOOT: u8 = 0x28;
+pub(crate) const POSE_UP: u8 = 0x29;
+pub(crate) const POSE_DOWN: u8 = 0x2A;
 
 /// Gravity of Jetman flying: a fixed value of 49, a = 12 per step (levels.md 6.5).
-const JETMAN_PULL: u16 = 12;
+pub(crate) const JETMAN_PULL: u16 = 12;
 const CAP: u16 = 0x0300;
 const CAP_SIDEWAYS: u16 = 0x0700;
 
 /// The steps of the explosion and assembly animation: the counter passes this (player.md 7.1).
-const ANIMATION_END: u8 = 0x12;
+pub(crate) const ANIMATION_END: u8 = 0x12;
 
 impl Pod {
     /// Shrinks a speed by `amount`; through 0 the leftover becomes a speed the other way

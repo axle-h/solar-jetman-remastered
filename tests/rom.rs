@@ -11,43 +11,8 @@ use solar_jetman::rom::pack::{
 };
 use solar_jetman::rom::sheet::decode_sheet;
 use solar_jetman::rom::{AssetPack, MANIFEST_PATH, Manifest, PRG_SHA1, Rom, import};
-use std::path::{Path, PathBuf};
+use solar_jetman::tools::test_rom as rom;
 use std::sync::OnceLock;
-
-fn rom_path() -> Option<PathBuf> {
-    if let Some(path) = std::env::var_os("SJ_ROM") {
-        return Some(PathBuf::from(path));
-    }
-    let folder = Path::new(env!("CARGO_MANIFEST_DIR")).join("vendor/rom");
-    let mut found: Vec<PathBuf> = std::fs::read_dir(folder)
-        .ok()?
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("nes"))
-        })
-        .collect();
-    found.sort();
-    found.into_iter().next()
-}
-
-/// The checked ROM, or `None` (after saying so) when there is none.
-fn rom() -> Option<&'static Rom> {
-    static ROM: OnceLock<Option<Rom>> = OnceLock::new();
-    ROM.get_or_init(|| {
-        let Some(path) = rom_path() else {
-            eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
-            return None;
-        };
-        let file = std::fs::read(&path)
-            .unwrap_or_else(|error| panic!("cannot read {}: {error}", path.display()));
-        Some(
-            Rom::from_nes_file(&file).unwrap_or_else(|error| panic!("{}: {error}", path.display())),
-        )
-    })
-    .as_ref()
-}
 
 fn pack() -> Option<&'static AssetPack> {
     static PACK: OnceLock<Option<AssetPack>> = OnceLock::new();

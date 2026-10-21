@@ -4,90 +4,12 @@
 use super::Scaled;
 use super::objects::{SLOTS, relative, state};
 use super::pod::{STATE_GATE, STATE_POD};
-use super::tables::SIN;
+use crate::game::gameplay::gate::{
+    END_COUNT, GROUP_FIRST, GROUP_PHASE, Group, PARTICLE_FRAME, polar,
+};
+pub use crate::game::gameplay::gate::{Gate, planet_flag_bit};
 use crate::game::level::{Level, World};
 use crate::game::sound::{Channel, Request};
-
-/// Counts of the gate state: it ends when the burst counter reaches this (player.md 9.2.3).
-const END_COUNT: u8 = 96;
-/// The particles' picture: the star of object frame $BC.
-const PARTICLE_FRAME: u8 = 0xBC;
-/// First slot of the two particle groups (A: 15-22, B: 23-30).
-const GROUP_FIRST: [usize; 2] = [15, 23];
-/// The phase each group adds to the angle of its particles.
-const GROUP_PHASE: [u8; 2] = [15, 0];
-
-/// One ring of eight particles (player.md 9.2.3 step 5).
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
-struct Group {
-    /// Radius in whole pixels.
-    r: u16,
-    /// Radius speed, angular speed and angle, all 8.8.
-    v: i32,
-    w: u16,
-    a: u16,
-}
-
-/// The gate state's own memory.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct Gate {
-    /// The wormhole's slot and position.
-    slot: usize,
-    at: (u16, u16),
-    /// The player state to go back to, RAM $69.
-    previous: u8,
-    /// The step of the state, 1 on its first.
-    n: u32,
-    /// The burst counter, RAM $68.
-    k: u8,
-    groups: [Option<Group>; 2],
-    /// Times the background palettes 2 and 3 have been darkened.
-    pub fades: u8,
-    /// Those fades in the palette on screen: the shadow is uploaded only by video job 0
-    /// (`graphics.md` 7.1).
-    #[serde(default)]
-    pub fades_shown: u8,
-    /// The pod's sprite palette bits, RAM $98 bits 0-1.
-    pub flash: u8,
-}
-
-impl Gate {
-    /// The player state the gate was entered in, RAM $69.
-    pub fn previous(&self) -> u8 {
-        self.previous
-    }
-}
-
-/// The bit of a planet's warpship flag in `planet_flags` for a level of the planet or its second
-/// level (game-flow.md 6): planet 12 uses planet 10's.
-pub fn planet_flag_bit(level: usize) -> usize {
-    let planet = match level {
-        0..=12 => level,
-        13..=25 => level - 13,
-        29.. => level - 29,
-        _ => 0,
-    };
-    if planet == 12 { 10 } else { planet }
-}
-
-/// (dx, dy) of a point at `angle` and radius `r` (scenes.md 5.4a).
-fn polar(angle: u8, r: i32) -> (i32, i32) {
-    let fold = |a: u8| {
-        if a < 128 {
-            usize::from(a)
-        } else {
-            256 - usize::from(a)
-        }
-    };
-    let sine = |index: usize| i32::from(SIN.get(index).copied().unwrap_or(0));
-    let dx = sine(fold(angle)) * r / 256;
-    let j = angle.wrapping_add(64);
-    let dy = sine(fold(j)) * r / 256;
-    (
-        if angle >= 128 { -dx } else { dx },
-        if j >= 128 { -dy } else { dy },
-    )
-}
 
 impl Scaled {
     /// Whether the wormhole at `at` is touched and what it does (player.md 9.2.1-9.2.2): an

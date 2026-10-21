@@ -289,13 +289,13 @@ pub fn item_start(kind: u8) -> (u8, u8) {
 }
 
 /// The frames of an explosion by position in its sequence (objects.md 2.5).
-const EXPLOSION_SEQUENCE: [u8; 19] = [
+pub(crate) const EXPLOSION_SEQUENCE: [u8; 19] = [
     0x00, 0x01, 0x02, 0x03, 0xFF, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFF, 0x09, 0x0A, 0x0B, 0x0C, 0x0D,
     0x0E, 0x0F, 0xFF,
 ];
 
 /// Points added by the kill of a placed object, by explosion state 4 or 5 (objects.md 2.5).
-const KILL_POINTS: [u32; 2] = [3, 5];
+pub(crate) const KILL_POINTS: [u32; 2] = [3, 5];
 
 /// What the object rules read of the surroundings.
 pub struct Env<'a> {
@@ -905,7 +905,7 @@ pub struct NoseShot {
 }
 
 /// The offsets of the pod's nose and flame by facing (player.md 10, bank 0 $CAC3).
-pub(super) const NOSE: [u8; 40] = [
+pub(crate) const NOSE: [u8; 40] = [
     0x0A, 0x0A, 0x08, 0x07, 0x07, 0x05, 0x03, 0x01, 0x00, 0xFE, 0xFC, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6,
     0xF6, 0xF6, 0xF8, 0xF8, 0xF9, 0xFB, 0xFD, 0xFE, 0x00, 0x02, 0x03, 0x06, 0x07, 0x08, 0x09, 0x0A,
     0x0A, 0x0A, 0x09, 0x08, 0x07, 0x05, 0x03, 0x02,
@@ -913,7 +913,7 @@ pub(super) const NOSE: [u8; 40] = [
 
 /// Adds two velocities on one axis, each a magnitude with a direction. Spec gap: a sum in
 /// opposite directions keeps the larger one's direction.
-fn add_velocity(a: u16, a_negative: bool, b: u16, b_negative: bool) -> (u16, bool) {
+pub(crate) fn add_velocity(a: u16, a_negative: bool, b: u16, b_negative: bool) -> (u16, bool) {
     if a_negative == b_negative {
         (a.saturating_add(b), a_negative)
     } else if a >= b {

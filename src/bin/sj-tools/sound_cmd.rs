@@ -10,7 +10,6 @@ use solar_jetman::tools::sound::{
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
 
 fn number(text: Option<&String>, what: &str) -> Result<u32, String> {
     let text = text.ok_or(format!("{what} needs a number"))?;
@@ -255,47 +254,35 @@ fn capture_all(
 ) -> Result<(), String> {
     let script = repo.join("tools/mesen/sound-capture.lua");
     let runner = repo.join("tools/mesen/run.sh");
-    let queue = Mutex::new(plans.iter());
-    let failures = Mutex::new(Vec::new());
-    std::thread::scope(|scope| {
-        for _ in 0..jobs {
-            scope.spawn(|| {
-                loop {
-                    let Some(plan) = queue.lock().expect("queue").next() else {
-                        break;
-                    };
-                    let log = folder.join(format!("{}.log", plan.name));
-                    let status = Command::new(&runner)
-                        .arg(&script)
-                        .arg(rom)
-                        .env("SJ_SOUND_OUT", &log)
-                        .env("SJ_SOUND_FRAMES", plan.frames.to_string())
-                        .env("SJ_SOUND_SONG", &plan.song)
-                        .env("SJ_SOUND_REQUESTS", &plan.requests)
-                        .env("SJ_SOUND_EFFECTS", &plan.effects)
-                        .env(
-                            "SJ_SOUND_RAM_EFFECT",
-                            if plan.ram_effect {
-                                INJECT_FRAME.to_string()
-                            } else {
-                                String::new()
-                            },
-                        )
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .status();
-                    match status {
-                        Ok(status) if status.success() => println!("  captured {}", plan.name),
-                        other => failures
-                            .lock()
-                            .expect("failures")
-                            .push(format!("{}: {other:?}", plan.name)),
-                    }
-                }
-            });
+    let failures = crate::in_parallel(plans, jobs, |plan| {
+        let log = folder.join(format!("{}.log", plan.name));
+        let status = Command::new(&runner)
+            .arg(&script)
+            .arg(rom)
+            .env("SJ_SOUND_OUT", &log)
+            .env("SJ_SOUND_FRAMES", plan.frames.to_string())
+            .env("SJ_SOUND_SONG", &plan.song)
+            .env("SJ_SOUND_REQUESTS", &plan.requests)
+            .env("SJ_SOUND_EFFECTS", &plan.effects)
+            .env(
+                "SJ_SOUND_RAM_EFFECT",
+                if plan.ram_effect {
+                    INJECT_FRAME.to_string()
+                } else {
+                    String::new()
+                },
+            )
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        match status {
+            Ok(status) if status.success() => {
+                println!("  captured {}", plan.name);
+                Ok(())
+            }
+            other => Err(format!("{}: {other:?}", plan.name)),
         }
     });
-    let failures = failures.into_inner().expect("failures");
     if failures.is_empty() {
         Ok(())
     } else {

@@ -3,27 +3,8 @@
 
 use super::behave::{Shot, near, slow_and_turn, slow_down};
 use super::objects::{CHILD_SLOTS, Env, Object, ObjectTable, SLOTS, state};
+use crate::game::gameplay::minions::{AIM, FLAME_FRAMES};
 use crate::game::sound::{Channel, Request};
-
-/// The aimed shots' placement table (behaviour.md 2.8): dx, dy, flags Y, flags X.
-const AIM: [(i16, i16, u8, u8); 11] = [
-    (-21, 8, 0xFF, 1),
-    (21, 8, 0xFF, 0),
-    (0, -16, 0, 0xFF),
-    (-12, -7, 0, 3),
-    (12, -7, 0, 0),
-    (-12, -3, 0, 3),
-    (12, -3, 0, 0),
-    (0, -12, 0, 0xFF),
-    (-12, 3, 1, 3),
-    (12, 3, 1, 0),
-    (0, 12, 1, 0xFF),
-];
-
-/// The frames of a flame by its age (behaviour.md 5.2); the first entry is never shown.
-const FLAME_FRAMES: [u8; 12] = [
-    0x64, 0x65, 0x66, 0x67, 0x66, 0x65, 0x65, 0x66, 0x67, 0x66, 0x65, 0x64,
-];
 
 impl ObjectTable {
     /// Turns the object in `slot` into an explosion in place (behaviour.md 3.5, without the

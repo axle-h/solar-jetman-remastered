@@ -2,66 +2,9 @@
 //! item hangs on a rigid rope of length 32 from the pod and swings under gravity and thrust.
 
 use super::tables::SIN;
-
-/// The rope table (player.md 8.2): entries 0-31 are the quarter circle, 32-63 the catch radius.
-pub const ROPE: [u8; 64] = [
-    0x00, 0x02, 0x03, 0x05, 0x06, 0x08, 0x09, 0x0B, 0x0C, 0x0E, 0x0F, 0x10, 0x12, 0x13, 0x14, 0x15,
-    0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1B, 0x1C, 0x1D, 0x1E, 0x1E, 0x1F, 0x1F, 0x1F, 0x20, 0x20, 0x20,
-    0x20, 0x20, 0x20, 0x20, 0x1F, 0x1F, 0x1F, 0x1F, 0x1E, 0x1E, 0x1E, 0x1D, 0x1D, 0x1C, 0x1B, 0x1B,
-    0x1B, 0x1A, 0x19, 0x18, 0x17, 0x15, 0x15, 0x14, 0x13, 0x12, 0x10, 0x0E, 0x0C, 0x0B, 0x08, 0x04,
-];
-
-/// Load class by item kind 1-19 (player.md 8.1).
-const MASS: [u8; 19] = [2, 0, 1, 1, 1, 2, 2, 0, 1, 0, 1, 1, 0, 0, 0, 0, 2, 0, 2];
-
-/// The picture of the beam in slot 2 for rope angle `angle` (0-127): the rope is a line, so the
-/// frame repeats every half turn, in sectors of four angle units. Spec gap, measured in the
-/// original over a long tow (the frame byte is read by the lift's sign, player.md 8.3 b).
-pub fn beam_frame(angle: u8) -> u8 {
-    const FRAMES: [u8; 16] = [
-        0x38, 0x6F, 0x39, 0x70, 0x3A, 0x71, 0x3B, 0x72, 0x3C, 0x72, 0x3B, 0x71, 0x3A, 0x70, 0x39,
-        0x6F,
-    ];
-    FRAMES[usize::from((angle >> 2) + 1) & 15]
-}
-
-/// The load class of an item kind (RAM $67).
-pub fn mass_of(kind: u8) -> u8 {
-    usize::from(kind)
-        .checked_sub(1)
-        .and_then(|i| MASS.get(i))
-        .copied()
-        .unwrap_or(0)
-}
-
-/// The offset of the item from the pod at rope angle `angle` (0-127, player.md 8.2).
-pub fn rope_offset(angle: u8) -> (i16, i16) {
-    let r = usize::from(angle & 31);
-    let (a, b) = (i16::from(ROPE[r]), i16::from(ROPE[31 - r]));
-    match (angle >> 5) & 3 {
-        0 => (a, -b),
-        1 => (b, a),
-        2 => (-a, b),
-        _ => (-b, -a),
-    }
-}
-
-/// The rope angle for an item at (`dx`, `dy`) from the pod (player.md 8.1): `r` is the largest
-/// index of the rope table's first 32 entries that does not exceed |dx|, and the signs of dx and
-/// dy choose the quadrant. dy is used only for its sign.
-pub fn angle_for(dx: i32, dy: i32) -> u8 {
-    let v = dx.unsigned_abs().min(31) as u8;
-    let r = (0..32u8)
-        .rev()
-        .find(|&r| ROPE[usize::from(r)] <= v)
-        .unwrap_or(0);
-    match (dx >= 0, dy >= 0) {
-        (true, false) => r,
-        (true, true) => 64 - r,
-        (false, true) => 64 + r,
-        (false, false) => 128 - r,
-    }
-}
+pub use crate::game::gameplay::tow::{
+    ROPE, SpinReward, angle_for, beam_frame, mass_of, rope_offset,
+};
 
 /// W of 1.00 in [`Tow::speed`]'s units.
 const W_ONE: u32 = 1 << 24;
@@ -322,45 +265,9 @@ impl Tow {
     }
 }
 
-/// What a counted swing of a crystal gives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum SpinReward {
-    Points(u32),
-    /// The ninth swing: a life, a jetpod and a blue crystal.
-    Bonus,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_rope_hangs_below_at_angle_64() {
-        assert_eq!(rope_offset(0), (0, -32));
-        assert_eq!(rope_offset(64), (0, 32));
-        assert_eq!(rope_offset(32), (32, 0));
-        assert_eq!(rope_offset(96), (-32, 0));
-    }
-
-    #[test]
-    fn the_angle_follows_the_item_around_the_pod() {
-        assert_eq!(angle_for(0, -20), 0);
-        assert_eq!(angle_for(20, 0) >> 5, 1);
-        assert_eq!(angle_for(-5, 20) >> 5, 2);
-        assert_eq!(angle_for(-20, -3) >> 5, 3);
-    }
-
-    #[test]
-    fn the_catch_angle_is_a_staircase_in_the_horizontal_offset() {
-        // Demo 1, step 698 (player.md 8.1): dx = 12, dy = 28 gives 64 - 8.
-        assert_eq!(angle_for(12, 28), 56);
-        assert_eq!(angle_for(13, 28), 56);
-        assert_eq!(angle_for(9, -28), angle_for(10, -28));
-        // Directly below the pod: 64; the quadrants mirror each other.
-        assert_eq!(angle_for(0, 20), 64);
-        assert_eq!(angle_for(-12, 28), 72);
-        assert_eq!(angle_for(-12, -28), 120);
-    }
 
     #[test]
     fn gravity_swings_the_load_towards_the_hanging_position() {

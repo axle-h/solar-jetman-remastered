@@ -12,7 +12,7 @@ pub const ROPE: [u8; 64] = [
 ];
 
 /// Load class by item kind 1-19 (player.md 8.1).
-const MASS: [u8; 19] = [2, 0, 1, 1, 1, 2, 2, 0, 1, 0, 1, 1, 0, 0, 0, 0, 2, 0, 2];
+pub(crate) const MASS: [u8; 19] = [2, 0, 1, 1, 1, 2, 2, 0, 1, 0, 1, 1, 0, 0, 0, 0, 2, 0, 2];
 
 /// W's whole unit in its 24-bit form ($6C.$6B.$6A) (player.md 8.3).
 const W_ONE: u32 = 0x01_0000;

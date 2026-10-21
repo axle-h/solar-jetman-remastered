@@ -1,4 +1,4 @@
--- Like force-capture.lua, plus SJ_RAM (hex addresses appended to each log line). Forced RAM writes, then the title, password, flight and launch screens frame by frame, for
+-- Like title-capture.lua, plus forced RAM writes (SJ_WRITES) and a wider log (SJ_RAM). The title, password, flight and launch screens frame by frame, for
 -- comparing them with the remake (`sj-tools scene --compare`; the screenshots are "shot-FRAME.png",
 -- the sprite memory of the frame before is in "shot-FRAME-1.txt"). Run through tools/mesen/run.sh; parameters come from
 -- the environment:
@@ -21,7 +21,7 @@ local function guard(fn)
     if finished then return end
     local ok, err = pcall(fn, ...)
     if not ok then
-      print("force-capture: " .. tostring(err))
+      print("scene-capture: " .. tostring(err))
       emu.stop(1)
     end
   end

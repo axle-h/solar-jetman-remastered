@@ -9,144 +9,13 @@ use super::rng::Rng;
 use crate::game::level::{Level, Placement, Point};
 use crate::game::sound::{Channel, Request};
 
-/// Slots 0-30; slot 0 is the pod and lives in [`Pod`], so the table's slot 0 stays free.
-pub const SLOTS: usize = 31;
-pub const SHOT_SLOTS: std::ops::RangeInclusive<usize> = 3..=10;
-pub const ITEM_SLOTS: std::ops::RangeInclusive<usize> = 11..=14;
-pub const CHILD_SLOTS: std::ops::RangeInclusive<usize> = 15..=22;
-pub const PLACED_SLOTS: std::ops::RangeInclusive<usize> = 23..=30;
-
-/// States used by the rules here (objects.md 2.4, behaviour.md 5).
-pub mod state {
-    pub const FREE: u8 = 0;
-    pub const SPARK: u8 = 1;
-    /// A spark that rises: the sparks of a picked-up crystal.
-    pub const SPARK_RISING: u8 = 2;
-    pub const EXHAUST: u8 = 3;
-    pub const EXPLOSION_SMALL: u8 = 4;
-    pub const EXPLOSION_LARGE: u8 = 5;
-    pub const MARKER: u8 = 6;
-    pub const MOTHERSHIP: u8 = 7;
-    pub const BULLET: u8 = 8;
-    /// Slot 2 as the tractor beam (player.md 8.4).
-    pub const BEAM: u8 = 9;
-    /// Slot 2 as the shield ring (player.md 4.7a).
-    pub const SHIELD_RING: u8 = 0x0C;
-    /// The pick-up sparkle (objects.md 7, behaviour.md 6.4).
-    pub const SPARKLE: u8 = 0x0B;
-    /// The warp level's countdown digit (behaviour.md 6.3).
-    pub const COUNTDOWN: u8 = 0x0D;
-    pub const ITEM: u8 = 0x0A;
-    pub const RING: u8 = 0x0E;
-    pub const MISSILE: u8 = 0x0F;
-    pub const TIME_BOMB: u8 = 0x10;
-    pub const STAR_PARENT: u8 = 0x12;
-    pub const STAR_CHILD: u8 = 0x13;
-    pub const MULTI_WARHEAD: u8 = 0x14;
-    pub const ENEMY_SHOT: u8 = 0x15;
-    pub const PIECE: u8 = 0x21;
-    pub const FLAME: u8 = 0x17;
-    pub const FLAME_LOW: u8 = 0x18;
-    pub const DRONE: u8 = 0x19;
-    pub const GUN_SHOT: u8 = 0x1A;
-    pub const HEAD_SHOT: u8 = 0x1B;
-    pub const HEAD_A: u8 = 0x1C;
-    pub const HEAD_B: u8 = 0x1D;
-    pub const MINE: u8 = 0x1E;
-    pub const HOPPER: u8 = 0x1F;
-    pub const THRUSTER: u8 = 0x22;
-    pub const GREEN_ORB: u8 = 0x23;
-    pub const BONUS_STAR: u8 = 0x24;
-    pub const BONUS_BOX: u8 = 0x25;
-    pub const TURRET_FIRST: u8 = 0x86;
-    pub const TURRET_LAST: u8 = 0x95;
-    pub const DOME: u8 = 0x97;
-    pub const GUN_12: u8 = 0x98;
-    pub const WALKER_A: u8 = 0x99;
-    pub const WALKER_B: u8 = 0x9A;
-    pub const PILLAR_A: u8 = 0x9B;
-    pub const PILLAR_B: u8 = 0x9C;
-    pub const GUN_17: u8 = 0x9D;
-    pub const GUN_18: u8 = 0x9E;
-    pub const HOURGLASS: u8 = 0x9F;
-    pub const HOURGLASS_UP: u8 = 0xA0;
-    pub const BLOCK: u8 = 0xA1;
-    pub const MACHINE_A: u8 = 0xA2;
-    pub const MACHINE_B: u8 = 0xA3;
-    pub const DOME_LIFT: u8 = 0xA4;
-    pub const MAGNET_PULL: u8 = 0xA5;
-    pub const MAGNET_PUSH: u8 = 0xA6;
-    pub const CREATURE: u8 = 0xA7;
-    pub const BIG_MACHINE: u8 = 0xA8;
-    pub const FORMATION_A: u8 = 0xA9;
-    pub const FORMATION_B: u8 = 0xAA;
-    pub const GREEN: u8 = 0xAB;
-    pub const GUN_47: u8 = 0xAC;
-    pub const GENERATOR_FIRST: u8 = 0xAD;
-    pub const SPHERE: u8 = 0xAF;
-    pub const GENERATOR_LAST: u8 = 0xB3;
-    pub const FINAL_FIRST: u8 = 0xB4;
-    pub const FINAL_LAST: u8 = 0xB6;
-    pub const CORE: u8 = 0xB7;
-    pub const EGG: u8 = 0xB8;
-    pub const SATELLITE: u8 = 0xB9;
-    pub const COMPANION: u8 = 0xBA;
-}
-
-/// Frame $FF: invisible.
-pub const INVISIBLE: u8 = 0xFF;
-
+pub(super) use crate::game::gameplay::objects::NOSE;
+pub use crate::game::gameplay::objects::{
+    CHILD_SLOTS, INVISIBLE, ITEM_SLOTS, ItemEntry, NoseShot, PLACED_SLOTS, SHOT_SLOTS, SLOTS,
+    item_start, penetration, relative, state,
+};
+use crate::game::gameplay::objects::{EXPLOSION_SEQUENCE, KILL_POINTS, add_velocity};
 pub use crate::game::gameplay::objects::{Object, Score};
-
-/// An item of the level's items list (levels.md 3.3, economy.md 2.1); kind 0 is gone.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct ItemEntry {
-    pub kind: u8,
-    pub x: u16,
-    pub y: u16,
-}
-
-/// Frame and state of an item kind (levels.md 3.3, behaviour.md 6.1).
-pub fn item_start(kind: u8) -> (u8, u8) {
-    match kind {
-        1 => (0x54, state::ITEM),
-        3 => (0x59, state::ITEM),
-        4 => (0x5A, state::ITEM),
-        5 => (0x58, state::ITEM),
-        6 => (0x57, state::ITEM),
-        7 => (0x5A, state::ITEM),
-        8 => (0x5B, state::ITEM),
-        9 => (0x5E, state::ITEM),
-        10 => (0x5C, state::ITEM),
-        11 => (0x60, state::ITEM),
-        12 => (0x61, state::ITEM),
-        13 => (0x62, state::ITEM),
-        14 => (0x64, state::ITEM),
-        15 => (0x65, state::ITEM),
-        16 => (0x66, state::ITEM),
-        17 | 26 => (0x67, state::RING),
-        18 => (0x52, state::ITEM),
-        19 => (0x53, state::ITEM),
-        20 => (0x52, state::ITEM),
-        21 => (INVISIBLE, state::MOTHERSHIP),
-        22 => (0x8A, state::MOTHERSHIP),
-        23 => (0x8B, state::MOTHERSHIP),
-        24 => (0x8C, state::MOTHERSHIP),
-        25 => (0x8D, state::MOTHERSHIP),
-        27 => (0x7E, state::ITEM),
-        // Kind 2 and the kinds no list uses have no valid start.
-        _ => (INVISIBLE, 0),
-    }
-}
-
-/// The frames of an explosion by position in its sequence (objects.md 2.5).
-const EXPLOSION_SEQUENCE: [u8; 19] = [
-    0x00, 0x01, 0x02, 0x03, 0xFF, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFF, 0x09, 0x0A, 0x0B, 0x0C, 0x0D,
-    0x0E, 0x0F, 0xFF,
-];
-
-/// Points added by the kill of a placed object, by explosion state 4 or 5 (objects.md 2.5).
-const KILL_POINTS: [u32; 2] = [3, 5];
 
 /// What the object rules read of the surroundings.
 pub struct Env<'a> {
@@ -193,27 +62,6 @@ pub struct ObjectTable {
     pub countdown_done: bool,
     /// A shot hit an open core of the final level, RAM $EC (behaviour.md 4.16).
     pub core_hit: bool,
-}
-
-/// Penetration depth of two boxes on one axis (behaviour.md 3.1): `d` is the distance from the
-/// target to the mover, `w` the target's half size and `p` the mover's. None if they do not
-/// overlap.
-pub fn penetration(d: i16, w: i32, p: i32) -> Option<i32> {
-    let d = i32::from(d);
-    if d < 0 {
-        let c = i32::from(-d <= w);
-        let depth = w + p + d + c;
-        (depth >= 0).then_some(depth)
-    } else {
-        let c = i32::from(d < w);
-        let depth = w + p - d + c;
-        (depth > 0).then_some(depth)
-    }
-}
-
-/// `value - origin` as a signed 16-bit number (objects.md 3.4).
-pub fn relative(value: u16, origin: u16) -> i16 {
-    value.wrapping_sub(origin) as i16
 }
 
 impl ObjectTable {
@@ -676,37 +524,6 @@ impl ObjectTable {
     }
 }
 
-/// The start of the gun's next shot ([`ObjectTable::nose_shot`]).
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
-pub struct NoseShot {
-    pub slot: usize,
-    pub x: u16,
-    pub y: u16,
-    /// Horizontal and vertical speed (8.8) before the shooter's velocity is added.
-    pub speed: (u16, u16),
-    pub left: bool,
-    pub down: bool,
-}
-
-/// The offsets of the pod's nose and flame by facing (player.md 10, bank 0 $CAC3).
-pub(super) const NOSE: [u8; 40] = [
-    0x0A, 0x0A, 0x08, 0x07, 0x07, 0x05, 0x03, 0x01, 0x00, 0xFE, 0xFC, 0xFA, 0xF9, 0xF8, 0xF7, 0xF6,
-    0xF6, 0xF6, 0xF8, 0xF8, 0xF9, 0xFB, 0xFD, 0xFE, 0x00, 0x02, 0x03, 0x06, 0x07, 0x08, 0x09, 0x0A,
-    0x0A, 0x0A, 0x09, 0x08, 0x07, 0x05, 0x03, 0x02,
-];
-
-/// Adds two velocities on one axis, each a magnitude with a direction. Spec gap: a sum in
-/// opposite directions keeps the larger one's direction.
-fn add_velocity(a: u16, a_negative: bool, b: u16, b_negative: bool) -> (u16, bool) {
-    if a_negative == b_negative {
-        (a.saturating_add(b), a_negative)
-    } else if a >= b {
-        (a - b, a_negative)
-    } else {
-        (b - a, b_negative)
-    }
-}
-
 /// The memory of destroyed placed objects across visits (objects.md 3.6): the presence of the
 /// last level left in each group (levels 0-12 and 13-25).
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -755,17 +572,6 @@ mod tests {
     use crate::game::level::tests::synthetic_world;
 
     #[test]
-    fn penetration_follows_the_worked_case() {
-        // behaviour.md 3.1: object w = 4, pod 3.
-        assert_eq!(penetration(-7, 4, 3), Some(0));
-        assert_eq!(penetration(-4, 4, 3), Some(4));
-        assert_eq!(penetration(3, 4, 3), Some(5));
-        assert_eq!(penetration(4, 4, 3), Some(3));
-        assert_eq!(penetration(7, 4, 3), None);
-        assert_eq!(penetration(-8, 4, 3), None);
-    }
-
-    #[test]
     fn explosions_run_through_their_sequence() {
         let world = synthetic_world();
         let data = &world.objects;
@@ -808,13 +614,5 @@ mod tests {
         again.present = vec![5, 6, 7];
         memory.restore(0, &mut again);
         assert_eq!(again.present, vec![5, 6, 7]);
-    }
-
-    #[test]
-    fn score_adds_in_decimal_and_wraps() {
-        let mut score = Score(999_998);
-        score.add(5);
-        assert_eq!(score, Score(3));
-        assert_eq!(Score(1000).as_digits(), 0x001000);
     }
 }

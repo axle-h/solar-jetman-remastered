@@ -59,3 +59,27 @@ fn main() -> ExitCode {
         }
     }
 }
+
+/// Runs `work` on each item, `workers` threads at a time, and returns the errors.
+fn in_parallel<T: Sync>(
+    items: &[T],
+    workers: usize,
+    work: impl Fn(&T) -> Result<(), String> + Sync,
+) -> Vec<String> {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let errors = std::sync::Mutex::new(Vec::new());
+    std::thread::scope(|scope| {
+        for _ in 0..workers.min(items.len()) {
+            scope.spawn(|| {
+                while let Some(item) =
+                    items.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                {
+                    if let Err(error) = work(item) {
+                        errors.lock().unwrap().push(error);
+                    }
+                }
+            });
+        }
+    });
+    errors.into_inner().unwrap()
+}

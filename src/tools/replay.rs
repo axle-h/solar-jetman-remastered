@@ -1213,7 +1213,7 @@ pub fn start_game(
     };
     let mut game = Gameplay::new(world, level, seed);
     if replay.demo.is_some() {
-        game.start_demo(world, get("tm") as u8, Buttons(0), false);
+        game.start_demo(world, get("tm") as u8, Buttons(0));
     }
     if replay.demo.is_none() && replay.level > 12 {
         // A level entered by a transition keeps the pod's directions from the level before.

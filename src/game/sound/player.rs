@@ -26,8 +26,6 @@ pub struct Player {
     samples: Vec<f32>,
     /// Samples of `samples` already handed out.
     taken: usize,
-    #[serde(skip)]
-    muted: bool,
     #[serde(skip, default = "default_gain")]
     gain: f32,
     frames: u64,
@@ -55,7 +53,6 @@ impl Player {
             timed: Vec::new(),
             samples: Vec::new(),
             taken: 0,
-            muted: false,
             gain: DEFAULT_GAIN,
             frames: 0,
         }
@@ -73,7 +70,6 @@ impl Player {
             )));
         }
         saved.sound.rebind(self.sound.driver().data().clone());
-        saved.muted = self.muted;
         saved.gain = self.gain;
         *self = saved;
         Ok(())
@@ -95,15 +91,6 @@ impl Player {
     /// Frames run so far.
     pub fn frames(&self) -> u64 {
         self.frames
-    }
-
-    /// Muting keeps everything running and outputs silence.
-    pub fn set_muted(&mut self, muted: bool) {
-        self.muted = muted;
-    }
-
-    pub fn muted(&self) -> bool {
-        self.muted
     }
 
     /// Multiplies the output (clipped to ±1).
@@ -135,12 +122,8 @@ impl Player {
         self.taken = 0;
         self.apu.run_frame(&self.timed, &mut self.samples);
         self.frames += 1;
-        if self.muted {
-            self.samples.fill(0.0);
-        } else {
-            for sample in &mut self.samples {
-                *sample = (*sample * self.gain).clamp(-1.0, 1.0);
-            }
+        for sample in &mut self.samples {
+            *sample = (*sample * self.gain).clamp(-1.0, 1.0);
         }
         (&self.writes, &self.samples)
     }

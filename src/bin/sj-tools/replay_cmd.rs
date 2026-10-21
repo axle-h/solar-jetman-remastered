@@ -208,22 +208,7 @@ fn capture_all(repo: &Path, jobs: &[Job], recapture: bool) -> Result<(), String>
     let workers = std::thread::available_parallelism()
         .map_or(1, |n| n.get() / 2)
         .clamp(1, 6);
-    let next = std::sync::atomic::AtomicUsize::new(0);
-    let errors = std::sync::Mutex::new(Vec::new());
-    std::thread::scope(|scope| {
-        for _ in 0..workers.min(stale.len()) {
-            scope.spawn(|| {
-                while let Some(job) =
-                    stale.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-                {
-                    if let Err(error) = capture(repo, job) {
-                        errors.lock().unwrap().push(error);
-                    }
-                }
-            });
-        }
-    });
-    let errors = errors.into_inner().unwrap();
+    let errors = crate::in_parallel(&stale, workers, |job| capture(repo, job));
     if errors.is_empty() {
         Ok(())
     } else {

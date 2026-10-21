@@ -4,10 +4,10 @@
 use crate::game::level::{Level, Point};
 
 /// Band the player stays inside on screen (levels.md 5.2).
-const BAND_RIGHT: i32 = 144;
-const BAND_LEFT: i32 = 112;
-const BAND_DOWN: i32 = 96;
-const BAND_UP: i32 = 64;
+pub(crate) const BAND_RIGHT: i32 = 144;
+pub(crate) const BAND_LEFT: i32 = 112;
+pub(crate) const BAND_DOWN: i32 = 96;
+pub(crate) const BAND_UP: i32 = 64;
 
 /// The camera: the world position of the playfield's top-left pixel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

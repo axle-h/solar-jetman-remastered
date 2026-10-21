@@ -5,18 +5,13 @@
 //! - [`Sound`]: the driver with the game's side (sound.md 8): song starts, the two effect
 //!   request slots and their lock, pause, and the power-on register writes.
 //! - [`player`]: [`Sound`] feeding `src/apu` on the frame clock, for the app and tools.
-//! - [`jukebox`]: picking songs and effects to listen to, for the viewer.
 
 pub mod data;
 pub mod driver;
-pub mod jukebox;
 pub mod player;
 
 pub use data::{Effect, EffectStep, Event, Song, SoundData, SoundTables, Track};
 pub use driver::{Channel, Driver, RegisterWrite};
-
-/// The song that stops the music: its four tracks end at once (sound.md 8.1).
-pub const SILENCE: usize = 0;
 
 /// One of the two effect request slots (sound.md 8.2): A is serviced on even frames, B on odd.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -37,8 +32,6 @@ pub struct Sound {
     /// RAM $5D, low bit: which slot is serviced this frame.
     frame: u8,
     paused: bool,
-    /// The demo drops requests made through the slots.
-    demo: bool,
     /// The effects that started (channel, id), kept when recording is on, for the validation.
     started: Option<Vec<(Channel, u8)>>,
 }
@@ -91,7 +84,6 @@ impl Sound {
             lock: 0,
             frame: 0,
             paused: false,
-            demo: false,
             started: None,
         }
     }
@@ -136,10 +128,6 @@ impl Sound {
         &self.driver
     }
 
-    pub fn driver_mut(&mut self) -> &mut Driver {
-        &mut self.driver
-    }
-
     /// The writes made once at power-on (sound.md 1): $10 to $4017 down to $4000, then the DMC
     /// control, the 5-step frame counter sequence and the four channels enabled.
     pub fn power_on(&mut self, out: &mut Vec<RegisterWrite>) {
@@ -181,11 +169,6 @@ impl Sound {
         self.driver.start_song_looped(song);
     }
 
-    /// Stops the music, as the game does: by starting song 0.
-    pub fn stop_music(&mut self) {
-        self.driver.start_song(SILENCE);
-    }
-
     /// Puts a request in a slot; a slot written again before it is serviced keeps only the
     /// last request.
     pub fn request_effect(&mut self, slot: Slot, channel: Channel, id: u8) {
@@ -214,11 +197,6 @@ impl Sound {
     /// Sets the request lock (RAM $F7); the game sets $81 with its request of effect $32.
     pub fn lock_requests(&mut self, value: u8) {
         self.lock = value;
-    }
-
-    /// In the demo, requests through the slots are dropped.
-    pub fn set_demo(&mut self, demo: bool) {
-        self.demo = demo;
     }
 
     /// Pauses: silences the APU; the driver stops until [`Sound::resume`].
@@ -282,9 +260,7 @@ impl Sound {
             }
         }
         let slot = usize::from(self.frame & 1);
-        if let Some((channel, id)) = self.slots[slot].take()
-            && !self.demo
-        {
+        if let Some((channel, id)) = self.slots[slot].take() {
             self.start_effect(channel, id);
         }
     }
@@ -347,25 +323,6 @@ const fn use_of(id: u8, starts: &'static [(Channel, u8)], description: &'static 
         id,
         starts,
         description,
-    }
-}
-
-/// What a song is for (sound.md 8.1).
-pub fn song_description(song: usize) -> &'static str {
-    match song {
-        0 => "silence",
-        1 => "title",
-        2 => "pod destroyed",
-        3 => "landing on a planet",
-        4 => "mothership travelling",
-        5 => "warp levels",
-        6 => "unknown context",
-        7..=29 if song % 2 == 1 => "approaching a planet",
-        8..=30 => "planet",
-        31 => "unknown context",
-        32 => "probably unused",
-        33 => "final level",
-        _ => "",
     }
 }
 

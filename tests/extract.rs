@@ -4,24 +4,8 @@
 use solar_jetman::game::graphics::LevelGraphics;
 use solar_jetman::game::level::{Line, Point, Segment, World};
 use solar_jetman::rom::extract::{extract, sprite_file};
+use solar_jetman::tools::test_rom as rom;
 use std::sync::OnceLock;
-
-fn rom() -> Option<&'static solar_jetman::rom::Rom> {
-    static ROM: OnceLock<Option<solar_jetman::rom::Rom>> = OnceLock::new();
-    ROM.get_or_init(|| {
-        let repo = solar_jetman::tools::repo_root();
-        if solar_jetman::tools::default_rom(&repo).is_none() {
-            eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
-            return None;
-        }
-        Some(
-            solar_jetman::tools::load_rom(&repo, None)
-                .unwrap_or_else(|error| panic!("{error}"))
-                .1,
-        )
-    })
-    .as_ref()
-}
 
 fn world() -> Option<&'static World> {
     static WORLD: OnceLock<Option<World>> = OnceLock::new();

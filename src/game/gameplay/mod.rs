@@ -558,20 +558,19 @@ impl Gameplay {
     /// input, scene changes are dropped, and a newly pressed real button or Jetman flying on
     /// his own (state 2) ends it.
     /// `timer` is the shield timer the previous demo left; `held` the real controller now.
-    /// With `sound` the demo makes its sound requests (an addition); the original's is silent.
-    pub fn start_demo(&mut self, world: &World, timer: u8, held: Buttons, sound: bool) {
+    /// The original's demo is silent: its sound requests are dropped.
+    pub fn start_demo(&mut self, world: &World, timer: u8, held: Buttons) {
         self.demo = Some(autopilot::Demo {
             pilot: autopilot::Autopilot::new(usize::from(world.levels[self.level].number), timer),
             waypoints: world.objects.demo_waypoints.clone(),
             real_held: held,
             over: false,
-            sound,
         });
     }
 
-    /// Whether sound requests are dropped: in a demo, unless it was given its sound.
+    /// Whether sound requests are dropped: in the original's demo.
     fn silent(&self) -> bool {
-        self.demo.as_ref().is_some_and(|demo| !demo.sound)
+        self.demo.is_some()
     }
 
     /// A test setup for replays: the pod at rest at (`x`, `y`) and the camera at (`cx`, `cy`).
@@ -719,13 +718,6 @@ impl Gameplay {
         self.demo.as_ref().is_some_and(|demo| demo.over)
     }
 
-    /// The autopilot's waypoint index and shield timer (RAM $0510, $0511).
-    pub fn demo_state(&self) -> Option<(usize, u8)> {
-        self.demo
-            .as_ref()
-            .map(|demo| (demo.pilot.waypoint, demo.pilot.timer))
-    }
-
     /// Whether the camera follows the final level's route: level 26 with the player in state 6.
     fn routed(&self) -> bool {
         self.level == usize::from(final_level::FINAL_LEVEL) && self.pod.state == pod::STATE_FINAL
@@ -814,8 +806,7 @@ impl Gameplay {
     }
 
     /// Takes the sound requests made since the last call, in the order the original made them
-    /// (sound.md 8). The demo makes none: its requests are dropped (sound.md 8.2), unless it
-    /// was given its sound (`Gameplay::start_demo`).
+    /// (sound.md 8). The original's demo makes none: its requests are dropped (sound.md 8.2).
     pub fn take_sound(&mut self) -> Vec<Request> {
         std::mem::take(&mut self.sfx)
     }

@@ -11,26 +11,26 @@ pub const FINAL_LEVEL: u8 = 26;
 
 /// The moves of the 26 route steps (levels.md 5.2): bits 0-1 give x (01 right, bit 1 left),
 /// bits 2-3 give y (bit 2 alone down, bit 3 up); 0 ends the route.
-const MOVES: [u8; 26] = [
+pub(crate) const MOVES: [u8; 26] = [
     0x01, 0x09, 0x01, 0x05, 0x06, 0x05, 0x06, 0x05, 0x01, 0x09, 0x0A, 0x09, 0x0A, 0x09, 0x01, 0x09,
     0x01, 0x05, 0x01, 0x05, 0x06, 0x05, 0x01, 0x09, 0x01, 0x00,
 ];
 
 /// The waypoints: step i's move applies until the camera x reaches waypoint i.
-const WAYPOINTS: [u8; 26] = [
+pub(crate) const WAYPOINTS: [u8; 26] = [
     0x82, 0x84, 0x66, 0x47, 0x86, 0x07, 0xC6, 0x07, 0x8D, 0x0E, 0x0D, 0x8D, 0x0D, 0x8D, 0x8E, 0xCE,
     0x11, 0xD1, 0xD3, 0xD5, 0x95, 0xD5, 0x17, 0x19, 0x1A, 0x3F,
 ];
 
 /// The camera's x for a waypoint byte.
-fn waypoint_x(w: u8) -> u16 {
+pub(crate) fn waypoint_x(w: u8) -> u16 {
     256 * u16::from(w & 0x1F) + u16::from(w & 0xE0)
 }
 
 /// One axis of the end routine's guide (levels.md 5.2, "End"): a speed (8.8), a direction byte
 /// and a position (8.8; only its high byte matters).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-struct Guide {
+pub(crate) struct Guide {
     speed: u16,
     dir: u8,
     pos: u16,
@@ -59,17 +59,17 @@ pub struct Route {
     pub done: bool,
     pub mx: i32,
     pub my: i32,
-    vertical: Guide,
-    horizontal: Guide,
+    pub(crate) vertical: Guide,
+    pub(crate) horizontal: Guide,
 }
 
 /// The screen limits the pod is kept within, as its offset from the camera (player.md 9.1).
-const LEFT: i32 = 24;
-const RIGHT: i32 = 232;
-const TOP: i32 = 16;
-const BOTTOM: i32 = 176;
+pub(crate) const LEFT: i32 = 24;
+pub(crate) const RIGHT: i32 = 232;
+pub(crate) const TOP: i32 = 16;
+pub(crate) const BOTTOM: i32 = 176;
 
-fn clamp_move(v: i32) -> i32 {
+pub(crate) fn clamp_move(v: i32) -> i32 {
     v.clamp(-3, 3)
 }
 
@@ -324,7 +324,7 @@ use super::objects::{Env, Object, ObjectTable, state};
 
 /// The speeds and directions of the pieces a shot object splits into, by slot offset Y
 /// (behaviour.md 4.16): horizontal whole speed, vertical whole speed, flags X, flags Y.
-const SPLIT: [(u16, u16, u8, u8); 8] = [
+pub(crate) const SPLIT: [(u16, u16, u8, u8); 8] = [
     (3, 0, 1, 1),
     (2, 1, 0, 1),
     (1, 2, 1, 0),
@@ -336,11 +336,11 @@ const SPLIT: [(u16, u16, u8, u8); 8] = [
 ];
 
 /// The frames of the opening core ($B7) by its animation step.
-const CORE_FRAMES: [u8; 8] = [0xB4, 0xB5, 0xB6, 0xB6, 0xB6, 0xB6, 0xB6, 0xB5];
+pub(crate) const CORE_FRAMES: [u8; 8] = [0xB4, 0xB5, 0xB6, 0xB6, 0xB6, 0xB6, 0xB6, 0xB5];
 
 /// The points of the background effect (behaviour.md 4.16): x and y of a new piece.
-const EFFECT_X: [u16; 12] = [18, 20, 22, 22, 24, 24, 26, 26, 28, 28, 28, 30];
-const EFFECT_Y: [u16; 12] = [64, 80, 16, 112, 64, 144, 192, 208, 32, 176, 208, 96];
+pub(crate) const EFFECT_X: [u16; 12] = [18, 20, 22, 22, 24, 24, 26, 26, 28, 28, 28, 30];
+pub(crate) const EFFECT_Y: [u16; 12] = [64, 80, 16, 112, 64, 144, 192, 208, 32, 176, 208, 96];
 
 /// The background effect's state: the active point RAM $EB (None: $80) and the phase RAM $E9.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -643,10 +643,10 @@ mod tests {
 
 /// The hue of the final level's terrain by the frame counter's high nibble (bank 0 $AA82,
 /// graphics.md 7.5).
-const HUES: [u8; 16] = [3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xA, 9, 8, 7, 6, 5, 4];
+pub(crate) const HUES: [u8; 16] = [3, 4, 5, 6, 7, 8, 9, 0xA, 0xB, 0xA, 9, 8, 7, 6, 5, 4];
 
 /// The terrain colours after a core hit, by the number of cores alive (graphics.md 7.5).
-const AFTER_HIT: [[u8; 3]; 6] = [
+pub(crate) const AFTER_HIT: [[u8; 3]; 6] = [
     [0x0F, 0x0F, 0x0F],
     [0x20, 0x10, 0x0F],
     [0x22, 0x12, 0x02],
@@ -713,7 +713,7 @@ impl TerrainColours {
 
 /// Palette entries 9-11 of levels 3 and 11 by depth (levels.md 6.6): level 3 above and below
 /// camera y 768, level 11 above and below 2,304.
-const DEPTH_COLOURS: [[u8; 3]; 4] = [
+pub(crate) const DEPTH_COLOURS: [[u8; 3]; 4] = [
     [0x28, 0x16, 0x05],
     [0x0F, 0x32, 0x12],
     [0x38, 0x29, 0x19],

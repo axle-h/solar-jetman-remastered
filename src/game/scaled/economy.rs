@@ -14,38 +14,9 @@ use super::tow::{ROPE, SpinReward, beam_frame, rope_offset};
 use crate::game::level::{Level, PLANETS, World};
 use crate::game::sound::{Channel, Request};
 
+pub use crate::game::gameplay::economy::CARGO_VALUES;
 pub use crate::game::gameplay::economy::{Delivery, Outcome, Transition};
-
-/// Value of a delivered cargo by number (economy.md 2.4).
-pub const CARGO_VALUES: [u32; 17] = [
-    423, 618, 194, 865, 1, 748, 554, 663, 299, 354, 1287, 402, 93, 2453, 493, 893, 4872,
-];
-
-/// The score a delivered kind adds 64 frames into its message screen (economy.md 2.4).
-fn kind_value(kind: u8, cargo: u8) -> u32 {
-    match kind {
-        5 => 1000,
-        12 => 750,
-        9 => CARGO_VALUES[usize::from(cargo) % 17],
-        _ => 0,
-    }
-}
-
-/// Item kinds that are never delivered (economy.md 2.2).
-fn is_delivery(kind: u8) -> bool {
-    !matches!(kind, 0 | 1 | 11 | 17 | 26)
-}
-
-/// Whether the pod of type `pod_type` (RAM $DC bits 0-1) tows items of `kind` (economy.md 2.1).
-fn towable(kind: u8, pod_type: u8) -> bool {
-    match kind {
-        3..=10 | 12..=16 | 19 => true,
-        11 => pod_type >= 1,
-        1 => pod_type == 2,
-        17 => pod_type == 1,
-        _ => false,
-    }
-}
+use crate::game::gameplay::economy::{is_delivery, kind_value, towable};
 
 /// Whether the pod is inside the mothership's bay area (economy.md 2.2).
 pub(super) fn in_bay_area(pod: &super::pod::Pod, level: &Level) -> bool {

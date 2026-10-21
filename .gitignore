@@ -27,5 +27,4 @@ ppu-writes.txt
 
 # Claude Code agent worktrees
 /.claude/worktrees/
-/tools/scaled-lab/target
 /tools/scaled-lab/out

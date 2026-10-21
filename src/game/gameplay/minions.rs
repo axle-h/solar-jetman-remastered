@@ -6,7 +6,7 @@ use super::objects::{CHILD_SLOTS, Env, Object, ObjectTable, SLOTS, state};
 use crate::game::sound::{Channel, Request};
 
 /// The aimed shots' placement table (behaviour.md 2.8): dx, dy, flags Y, flags X.
-const AIM: [(i16, i16, u8, u8); 11] = [
+pub(crate) const AIM: [(i16, i16, u8, u8); 11] = [
     (-21, 8, 0xFF, 1),
     (21, 8, 0xFF, 0),
     (0, -16, 0, 0xFF),
@@ -21,7 +21,7 @@ const AIM: [(i16, i16, u8, u8); 11] = [
 ];
 
 /// The frames of a flame by its age (behaviour.md 5.2); the first entry is never shown.
-const FLAME_FRAMES: [u8; 12] = [
+pub(crate) const FLAME_FRAMES: [u8; 12] = [
     0x64, 0x65, 0x66, 0x67, 0x66, 0x65, 0x65, 0x66, 0x67, 0x66, 0x65, 0x64,
 ];
 

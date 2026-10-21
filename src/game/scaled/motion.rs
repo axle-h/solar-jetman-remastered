@@ -67,11 +67,6 @@ impl Axis {
     }
 }
 
-/// An acceleration per step (Q8.24) over a tick of fraction `f`.
-pub fn per_tick(amount: u32, f: u32) -> u32 {
-    ((u64::from(amount) * u64::from(f)) >> 16) as u32
-}
-
 /// An acceleration in the Original's units per step (1/256 px per step per step) over a tick.
 pub fn units(per_step: u16, f: u32) -> u32 {
     u32::from(per_step) * f

@@ -1,47 +1,5 @@
-//! The background's parallax stars (`docs/spec/graphics.md` 5.7.3): eight one-pixel stars that
-//! drift against the scroll over open sky. The job that moves them also leaves the horizontal
-//! thrust carry-in of `docs/spec/player.md` 4.6.
-
-/// Layer of each star: how much of the camera's movement it follows (1, 3/4 or 1/2).
-#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-enum Layer {
-    Full,
-    ThreeQuarters,
-    Half,
-}
-
-const LAYERS: [Layer; 8] = [
-    Layer::Full,
-    Layer::ThreeQuarters,
-    Layer::Half,
-    Layer::ThreeQuarters,
-    Layer::ThreeQuarters,
-    Layer::Full,
-    Layer::ThreeQuarters,
-    Layer::Half,
-];
-/// The frame counter value (AND $7F) at which a dead star appears.
-const SPAWN_PHASE: [u8; 8] = [0x02, 0x28, 0x32, 0x67, 0x16, 0x35, 0x56, 0x71];
-const SPAWN_AT: [(u8, u8); 8] = [
-    (0, 0x45),
-    (84, 0xFC),
-    (0, 0xC4),
-    (199, 0xFC),
-    (0, 0x23),
-    (135, 0xFC),
-    (0, 0x87),
-    (33, 0xFC),
-];
-
-/// One star: position in screen pixels with fractions, and whether it is on the field.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-pub struct Star {
-    pub x: u8,
-    pub y: u8,
-    x_fraction: u8,
-    y_fraction: u8,
-    pub dead: bool,
-}
+pub use crate::game::gameplay::stars::Star;
+use crate::game::gameplay::stars::{LAYERS, Layer, SPAWN_AT, SPAWN_PHASE};
 
 /// The job's state: the mode RAM $D5 (0 off, 1 on, $FF fading out) and the stars.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

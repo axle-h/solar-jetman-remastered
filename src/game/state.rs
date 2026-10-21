@@ -68,24 +68,6 @@ pub mod array {
     }
 }
 
-/// For `Box<[T; N]>`.
-pub mod array_box {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    pub fn serialize<S: Serializer, T: Serialize, const N: usize>(
-        a: &[T; N],
-        s: S,
-    ) -> Result<S::Ok, S::Error> {
-        a.as_slice().serialize(s)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>, T: Deserialize<'de>, const N: usize>(
-        d: D,
-    ) -> Result<Box<[T; N]>, D::Error> {
-        super::to_array(Vec::<T>::deserialize(d)?).map(Box::new)
-    }
-}
-
 /// For `Vec<[T; N]>` with any N.
 pub mod vec_array {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};

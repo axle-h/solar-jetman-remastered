@@ -4,13 +4,13 @@
 
 /// Layer of each star: how much of the camera's movement it follows (1, 3/4 or 1/2).
 #[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-enum Layer {
+pub(crate) enum Layer {
     Full,
     ThreeQuarters,
     Half,
 }
 
-const LAYERS: [Layer; 8] = [
+pub(crate) const LAYERS: [Layer; 8] = [
     Layer::Full,
     Layer::ThreeQuarters,
     Layer::Half,
@@ -21,8 +21,8 @@ const LAYERS: [Layer; 8] = [
     Layer::Half,
 ];
 /// The frame counter value (AND $7F) at which a dead star appears.
-const SPAWN_PHASE: [u8; 8] = [0x02, 0x28, 0x32, 0x67, 0x16, 0x35, 0x56, 0x71];
-const SPAWN_AT: [(u8, u8); 8] = [
+pub(crate) const SPAWN_PHASE: [u8; 8] = [0x02, 0x28, 0x32, 0x67, 0x16, 0x35, 0x56, 0x71];
+pub(crate) const SPAWN_AT: [(u8, u8); 8] = [
     (0, 0x45),
     (84, 0xFC),
     (0, 0xC4),
@@ -38,8 +38,8 @@ const SPAWN_AT: [(u8, u8); 8] = [
 pub struct Star {
     pub x: u8,
     pub y: u8,
-    x_fraction: u8,
-    y_fraction: u8,
+    pub(crate) x_fraction: u8,
+    pub(crate) y_fraction: u8,
     pub dead: bool,
 }
 

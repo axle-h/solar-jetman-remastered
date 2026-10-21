@@ -25,7 +25,7 @@ pub const STATE_GATE: u8 = 9;
 /// Fuel of a full tank (player.md 1).
 pub const FULL_FUEL: u16 = 0xE000;
 /// What anti-gravity takes from the 16-bit weapon gauge each step (player.md 4.1).
-const ANTIGRAVITY_DRAIN: u16 = 0x10;
+pub(crate) const ANTIGRAVITY_DRAIN: u16 = 0x10;
 /// RAM $D1 for the fitted anti-gravity (economy.md 6.4).
 pub const ANTIGRAVITY_DEVICE: u8 = 2;
 
@@ -254,13 +254,13 @@ pub struct Pod {
 
 /// What the slope responses of one step leave behind for the thrust carry-ins (player.md 4.6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-pub(super) struct SlopeEffect {
-    floor: bool,
-    ceiling: bool,
+pub(crate) struct SlopeEffect {
+    pub(crate) floor: bool,
+    pub(crate) ceiling: bool,
     /// Fraction byte of the later response's new horizontal speed.
-    fraction: u8,
+    pub(crate) fraction: u8,
     /// Whole part (0-15) of the ceiling response's new horizontal speed.
-    whole: u8,
+    pub(crate) whole: u8,
 }
 
 /// A speed of `magnitude` (1/65536 px per step) with direction `positive` changed by the signed

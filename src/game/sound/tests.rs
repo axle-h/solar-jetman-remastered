@@ -1,7 +1,6 @@
 //! Driver tests on made-up songs and effects.
 
 use super::data::*;
-use super::jukebox::Jukebox;
 use super::player::Player;
 use super::*;
 
@@ -443,13 +442,7 @@ fn request_slots_alternate_and_the_lock_drops_requests() {
     sound.frame(&mut out); // frame 131: slot B, no lock any more
     assert_eq!(sound.driver().channel(Channel::Pulse2).effect_id, 0x0C);
 
-    // The demo drops slot requests; pause stops the driver but not servicing.
-    sound.set_demo(true);
-    sound.request_effect(Slot::A, Channel::Triangle, 0x0A);
-    sound.frame(&mut out);
-    sound.frame(&mut out);
-    assert_eq!(sound.driver().channel(Channel::Triangle).effect_id, 0);
-    sound.set_demo(false);
+    // Pause stops the driver but not servicing.
     out.clear();
     sound.pause(&mut out);
     assert_eq!(out, [w(0x4015, 0)]);
@@ -491,29 +484,10 @@ fn player_makes_sound_from_a_song() {
     assert!(player.frames() >= 60);
     let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt();
     assert!(rms > 0.02, "{rms}");
-    player.set_muted(true);
-    player.fill(&mut samples);
-    assert!(samples[1000..].iter().all(|&s| s == 0.0));
 }
 
 #[test]
-fn jukebox_wraps_and_describes() {
-    let mut sound = Sound::new(data_with(0x80, vec![], vec![noise_effect()]));
-    let mut jukebox = Jukebox::default();
-    jukebox.change_song(&mut sound, -1);
-    assert_eq!(jukebox.song(), 33);
-    jukebox.change_song(&mut sound, 2);
-    assert_eq!(jukebox.song(), 1);
-    assert_eq!(sound.driver().song().0, 1);
-    jukebox.change_effect(&mut sound, 1);
-    assert_eq!(jukebox.effect().unwrap().id, 0x02);
-    jukebox.change_effect(&mut sound, -1);
-    assert_eq!(jukebox.effect().unwrap().id, 0x44);
-    assert!(jukebox.toggle_mute());
-    assert_eq!(
-        jukebox.describe(),
-        "song 1 (title), effect $44 (unidentified), muted"
-    );
+fn effects_table_is_well_formed() {
     // Effects table: sorted, even ids, one or two channels.
     for pair in EFFECTS.windows(2) {
         assert!(pair[0].id < pair[1].id);

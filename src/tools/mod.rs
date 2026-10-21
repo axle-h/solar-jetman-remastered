@@ -68,6 +68,25 @@ pub fn default_world(repo: &Path) -> Result<crate::game::level::World, String> {
     crate::rom::world(&pack.files).map_err(|error| error.to_string())
 }
 
+/// For tests: the default ROM ([`default_rom`]), read and checked once, or `None` (after saying
+/// so) when there is no ROM.
+pub fn test_rom() -> Option<&'static crate::rom::Rom> {
+    static ROM: std::sync::OnceLock<Option<crate::rom::Rom>> = std::sync::OnceLock::new();
+    ROM.get_or_init(|| {
+        let repo = repo_root();
+        if default_rom(&repo).is_none() {
+            eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
+            return None;
+        }
+        Some(
+            load_rom(&repo, None)
+                .unwrap_or_else(|error| panic!("{error}"))
+                .1,
+        )
+    })
+    .as_ref()
+}
+
 /// For tests: the level data of the default ROM, imported once, or `None` (after saying so)
 /// when there is no ROM.
 pub fn test_world() -> Option<&'static crate::game::level::World> {
@@ -75,12 +94,9 @@ pub fn test_world() -> Option<&'static crate::game::level::World> {
         std::sync::OnceLock::new();
     WORLD
         .get_or_init(|| {
-            let repo = repo_root();
-            if default_rom(&repo).is_none() {
-                eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
-                return None;
-            }
-            Some(default_world(&repo).unwrap_or_else(|error| panic!("{error}")))
+            let rom = test_rom()?;
+            let pack = crate::rom::import(rom).unwrap_or_else(|error| panic!("{error}"));
+            Some(crate::rom::world(&pack.files).unwrap_or_else(|error| panic!("{error}")))
         })
         .as_ref()
 }

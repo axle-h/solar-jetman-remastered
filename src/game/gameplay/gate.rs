@@ -9,38 +9,38 @@ use crate::game::level::{Level, World};
 use crate::game::sound::{Channel, Request};
 
 /// Counts of the gate state: it ends when the burst counter reaches this (player.md 9.2.3).
-const END_COUNT: u8 = 96;
+pub(crate) const END_COUNT: u8 = 96;
 /// The particles' picture: the star of object frame $BC.
-const PARTICLE_FRAME: u8 = 0xBC;
+pub(crate) const PARTICLE_FRAME: u8 = 0xBC;
 /// First slot of the two particle groups (A: 15-22, B: 23-30).
-const GROUP_FIRST: [usize; 2] = [15, 23];
+pub(crate) const GROUP_FIRST: [usize; 2] = [15, 23];
 /// The phase each group adds to the angle of its particles.
-const GROUP_PHASE: [u8; 2] = [15, 0];
+pub(crate) const GROUP_PHASE: [u8; 2] = [15, 0];
 
 /// One ring of eight particles (player.md 9.2.3 step 5).
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
-struct Group {
+pub(crate) struct Group {
     /// Radius in whole pixels.
-    r: u16,
+    pub(crate) r: u16,
     /// Radius speed, angular speed and angle, all 8.8.
-    v: i32,
-    w: u16,
-    a: u16,
+    pub(crate) v: i32,
+    pub(crate) w: u16,
+    pub(crate) a: u16,
 }
 
 /// The gate state's own memory.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Gate {
     /// The wormhole's slot and position.
-    slot: usize,
-    at: (u16, u16),
+    pub(crate) slot: usize,
+    pub(crate) at: (u16, u16),
     /// The player state to go back to, RAM $69.
-    previous: u8,
+    pub(crate) previous: u8,
     /// The step of the state, 1 on its first.
-    n: u32,
+    pub(crate) n: u32,
     /// The burst counter, RAM $68.
-    k: u8,
-    groups: [Option<Group>; 2],
+    pub(crate) k: u8,
+    pub(crate) groups: [Option<Group>; 2],
     /// Times the background palettes 2 and 3 have been darkened.
     pub fades: u8,
     /// Those fades in the palette on screen: the shadow is uploaded only by video job 0
@@ -71,7 +71,7 @@ pub fn planet_flag_bit(level: usize) -> usize {
 }
 
 /// (dx, dy) of a point at `angle` and radius `r` (scenes.md 5.4a).
-fn polar(angle: u8, r: i32) -> (i32, i32) {
+pub(crate) fn polar(angle: u8, r: i32) -> (i32, i32) {
     let fold = |a: u8| {
         if a < 128 {
             usize::from(a)

@@ -6,10 +6,9 @@ use solar_jetman::tools::sound::{compare, parse_capture, song_starts, sound_data
 #[test]
 fn captures_of_the_original_replay_exactly() {
     let repo = solar_jetman::tools::repo_root();
-    if solar_jetman::tools::default_rom(&repo).is_none() {
-        eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
+    let Some(rom) = solar_jetman::tools::test_rom() else {
         return;
-    }
+    };
     let mut logs: Vec<_> = std::fs::read_dir(repo.join("vendor/sound/captures"))
         .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
         .unwrap_or_default();
@@ -19,9 +18,8 @@ fn captures_of_the_original_replay_exactly() {
         eprintln!("skipped: no captures (run `cargo run --bin sj-tools -- sound-compare`)");
         return;
     }
-    let (_, rom) = solar_jetman::tools::load_rom(&repo, None).unwrap();
-    let data = sound_data(&rom).unwrap();
-    let starts = song_starts(&rom).unwrap();
+    let data = sound_data(rom).unwrap();
+    let starts = song_starts(rom).unwrap();
     for log in logs {
         let capture = parse_capture(&std::fs::read_to_string(&log).unwrap()).unwrap();
         let result = compare(&data, &starts, &capture);

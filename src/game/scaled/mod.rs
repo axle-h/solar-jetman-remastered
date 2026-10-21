@@ -647,7 +647,7 @@ impl Scaled {
     }
 
     /// Takes the sound requests made since the last call, in the order the original made them
-    /// (sound.md 8). The demo makes none: its requests are dropped (sound.md 8.2).
+    /// (sound.md 8).
     pub fn take_sound(&mut self) -> Vec<Request> {
         std::mem::take(&mut self.sfx)
     }

@@ -11,11 +11,11 @@ use std::cell::Cell;
 use std::ops::RangeInclusive;
 
 /// The frames of a spark by its life counter (behaviour.md 6.4).
-const SPARK_FRAMES: [u8; 4] = [0x37, 0x62, 0x63, 0x62];
+pub(crate) const SPARK_FRAMES: [u8; 4] = [0x37, 0x62, 0x63, 0x62];
 
 /// Turret shots by type - 1 (behaviour.md 4.1): offset, speeds in 1/256 px and the vertical
 /// direction (true = down).
-const TURRET_SHOTS: [(i16, i16, u16, u16, bool); 16] = [
+pub(crate) const TURRET_SHOTS: [(i16, i16, u16, u16, bool); 16] = [
     (0, -6, 0x0000, 0x0200, false),
     (0, 7, 0x0000, 0x0200, true),
     (5, -8, 0x0080, 0x0180, false),
@@ -42,17 +42,17 @@ pub(super) fn home_on(o: &mut Object, target: (u16, u16), accel: u16, max: u16) 
 
 /// The speed limit a homing table writes as one byte M (behaviour.md 2.3): whole part M mod 8,
 /// fraction M with the low three bits cleared.
-pub(super) fn max_speed(m: u8) -> u16 {
+pub(crate) fn max_speed(m: u8) -> u16 {
     u16::from(m & 7) << 8 | u16::from(m & 0xF8)
 }
 
 /// Slows an axis down by `amount`, stopping at 0 (behaviour.md 2.2).
-pub(super) fn slow_down(speed: &mut u16, amount: u16) {
+pub(crate) fn slow_down(speed: &mut u16, amount: u16) {
     *speed = speed.saturating_sub(amount);
 }
 
 /// Slows an axis down and turns it at 0 (behaviour.md 2.2, the plain version).
-pub(super) fn slow_and_turn(speed: &mut u16, flip: &mut bool, amount: u16) {
+pub(crate) fn slow_and_turn(speed: &mut u16, flip: &mut bool, amount: u16) {
     *speed = speed.saturating_sub(amount);
     if *speed == 0 {
         *flip = !*flip;
@@ -61,7 +61,7 @@ pub(super) fn slow_and_turn(speed: &mut u16, flip: &mut bool, amount: u16) {
 
 /// The magnets' variant (behaviour.md 2.2): past 0 the overshoot becomes the speed and the
 /// direction flips; reaching exactly 0 flips too.
-pub(super) fn slow_and_turn_overshoot(speed: &mut u16, flip: &mut bool, amount: u16) {
+pub(crate) fn slow_and_turn_overshoot(speed: &mut u16, flip: &mut bool, amount: u16) {
     if *speed >= amount {
         *speed -= amount;
         if *speed == 0 {

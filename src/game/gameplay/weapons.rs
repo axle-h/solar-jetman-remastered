@@ -29,7 +29,7 @@ pub fn cost(weapon: u8) -> Option<u8> {
 }
 
 /// The frames of a star child by its stage (behaviour.md 5.11.2).
-const CHILD_FRAMES: [u8; 6] = [0x27, 0x28, 0x29, 0x2F, 0x30, 0x31];
+pub(crate) const CHILD_FRAMES: [u8; 6] = [0x27, 0x28, 0x29, 0x2F, 0x30, 0x31];
 
 impl ObjectTable {
     /// Makes the shot of `weapon` (not the smart bomb) at the gun's nose, if the slot it would

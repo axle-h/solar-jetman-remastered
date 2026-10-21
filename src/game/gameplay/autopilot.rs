@@ -226,9 +226,6 @@ pub struct Demo {
     pub real_held: Buttons,
     /// A button was pressed: the demo is over.
     pub over: bool,
-    /// The demo makes its sound requests (an addition; the original's demo drops them).
-    #[serde(default)]
-    pub sound: bool,
 }
 
 #[cfg(test)]
@@ -315,7 +312,7 @@ mod tests {
         let mut world = crate::game::level::tests::synthetic_world();
         world.objects.demo_waypoints = vec![(1928, 86, 64); 88];
         let mut game = Gameplay::new(&world, 0, Seed::default());
-        game.start_demo(&world, 0, Buttons(0), false);
+        game.start_demo(&world, 0, Buttons(0));
         game.pass(&world, Buttons(0));
         assert_eq!(game.pod.camera_carry, 7);
     }

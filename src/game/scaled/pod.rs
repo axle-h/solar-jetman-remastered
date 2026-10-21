@@ -9,31 +9,19 @@ use super::motion::{self, Axis, ONE, PX, UNIT};
 use super::tables::{ATAN, SIN, THRUST, TRIANGLE};
 use super::terrain::{Surface, Window};
 use super::tow::{Moment, Tow};
+use crate::game::gameplay::pod::ANTIGRAVITY_DRAIN;
+pub(super) use crate::game::gameplay::pod::SlopeEffect;
+pub use crate::game::gameplay::pod::{
+    ANTIGRAVITY_DEVICE, Equipment, Event, FULL_FUEL, STATE_ASSEMBLING, STATE_FINAL, STATE_GATE,
+    STATE_JETMAN_DYING, STATE_JETMAN_FLYING, STATE_JETMAN_WALKING, STATE_POD, STATE_POD_EXPLODING,
+    STATE_RESPAWN,
+};
 use crate::game::level::{Level, PLANETS, World};
 use crate::game::sound::{Channel, Request};
-
-/// Player states (player.md 3). The final level's 6 and the gate and interlude states 9 and 10
-/// are not simulated.
-pub const STATE_POD: u8 = 1;
-pub const STATE_JETMAN_FLYING: u8 = 2;
-pub const STATE_JETMAN_WALKING: u8 = 3;
-pub const STATE_POD_EXPLODING: u8 = 4;
-pub const STATE_JETMAN_DYING: u8 = 5;
-pub const STATE_FINAL: u8 = 6;
-pub const STATE_RESPAWN: u8 = 7;
-pub const STATE_ASSEMBLING: u8 = 8;
-pub const STATE_GATE: u8 = 9;
 
 /// The pod rest's speed (`docs/scaled.md`, "Pod rest"): an upright pod landing on a flat
 /// floor slower than this comes to rest, Jetman's soft landing.
 pub const REST_BELOW: u32 = 2 << 24;
-
-/// Fuel of a full tank (player.md 1).
-pub const FULL_FUEL: u16 = 0xE000;
-/// What anti-gravity takes from the 16-bit weapon gauge each step (player.md 4.1).
-const ANTIGRAVITY_DRAIN: u16 = 0x10;
-/// RAM $D1 for the fitted anti-gravity (economy.md 6.4).
-pub const ANTIGRAVITY_DEVICE: u8 = 2;
 
 /// Speed cap of the pod after gravity (player.md 4.2) and of thrust (4.6).
 const CAP_POD: u32 = 4 * PX;
@@ -158,30 +146,6 @@ impl Body {
     }
 }
 
-/// What the pod carries that changes the physics (player.md 4.4, 4.5, 4.7).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-pub struct Equipment {
-    /// RAM $DC: bits 0-1 the pod type, bit 6 boosters owned, bit 7 shields owned.
-    pub owned: u8,
-    /// RAM $D3: the fitted engine or shield item (8 super shields, 9 momentum killer,
-    /// 10 efficient engines, 11 double strength thrusters), 0 none.
-    pub device: u8,
-    /// RAM $050E: the bullet upgrade, 0-2 (a shot has this + 1 hit points of strength).
-    pub bullet_upgrade: u8,
-    /// RAM $D1: the fitted weapon or device, the shop number + 1 (1 homing missiles, 5 time
-    /// bombs, 6 multi warhead, 8 star bullets), 0 none (economy.md 6).
-    pub weapon: u8,
-}
-
-impl Equipment {
-    pub fn has_shields(self) -> bool {
-        self.owned & 0x80 != 0
-    }
-    pub fn has_boosters(self) -> bool {
-        self.owned & 0x40 != 0
-    }
-}
-
 /// What the pod's step needs to know about the level and the moment.
 #[derive(Debug, Clone, Copy)]
 pub struct Context<'a> {
@@ -213,21 +177,6 @@ const FLOOR_SLOPE: usize = 1;
 const WALL: usize = 2;
 const FLAT_CEILING: usize = 3;
 const CEILING_SLOPE: usize = 4;
-
-/// Something the player's step asks the rest of the game to do.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum Event {
-    /// The pod blew up (player.md 7.1): jetpods - 1, the explosion in slot 1.
-    PodDestroyed,
-    /// Jetman was killed (player.md 7.2): lives 1 become 0, the explosion in slot 1.
-    JetmanKilled,
-    /// The death timer ran out: transition 4 (player.md 7.2).
-    JetmanLost,
-    /// Jetman touched a spare pod (player.md 6.3) and began assembling it.
-    SparePodFound,
-    /// The new pod is ready after assembling: jetpods + 1 (player.md 6.3).
-    PodAssembled,
-}
 
 /// The jetpod (player slot 0, state 1).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -360,17 +309,6 @@ pub struct Pod {
     /// Slope responses of the last terrain test: the fraction byte of the new horizontal speed
     /// before halving, and the whole part of it before the clamp (player.md 4.6).
     pub(super) slope: SlopeEffect,
-}
-
-/// What the slope responses of one step leave behind for the thrust carry-ins (player.md 4.6).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-pub(super) struct SlopeEffect {
-    floor: bool,
-    ceiling: bool,
-    /// Fraction byte of the later response's new horizontal speed.
-    fraction: u8,
-    /// Whole part (0-15) of the ceiling response's new horizontal speed.
-    whole: u8,
 }
 
 /// A speed of `magnitude` (Q8.24 px per step) with direction `positive` changed by the signed

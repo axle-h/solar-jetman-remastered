@@ -2,7 +2,7 @@
 
 The gameplay engine behind PHYSICS: REMASTERED (the default). Its physics tick runs at a rate R from 60 to 200 Hz, chosen at run time to match the display. It plays like the Original's 30 Hz logic step in real time, but acts on input within a tick. The Original engine (`src/game/gameplay`) is unchanged, for Mesen validation, replays and the original feel; `src/game/scaled` is a separate copy of its step logic, and the duplication is accepted. The differences of play are listed in `docs/deviations.md`, "The Scaled engine".
 
-Each rule was derived by simulating the Original against candidates at 30-200 Hz (`tools/scaled-lab`), and every one reduces bit for bit to the Original's when a tick is a whole step (R = 30), except where a decision below changes it on purpose.
+Each rule was derived by simulating the Original against candidates at 30-200 Hz (a lab since removed; it is in the git history under `tools/scaled-lab`), and every one reduces bit for bit to the Original's when a tick is a whole step (R = 30), except where a decision below changes it on purpose.
 
 ## Ground rules
 

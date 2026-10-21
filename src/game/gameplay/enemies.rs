@@ -7,7 +7,7 @@ use super::objects::{CHILD_SLOTS, Env, Object, ObjectTable, PLACED_SLOTS, SHOT_S
 use super::tables::SIN;
 
 /// The formation circle's quarter-wave (behaviour.md 4.12, bank 7 $B399).
-const CIRCLE: [u8; 128] = [
+pub(crate) const CIRCLE: [u8; 128] = [
     0x01, 0x03, 0x05, 0x07, 0x09, 0x0B, 0x0D, 0x0E, 0x10, 0x12, 0x13, 0x15, 0x17, 0x18, 0x1A, 0x1B,
     0x1D, 0x1E, 0x20, 0x21, 0x22, 0x24, 0x25, 0x26, 0x27, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
     0x30, 0x31, 0x32, 0x33, 0x34, 0x34, 0x35, 0x36, 0x37, 0x37, 0x38, 0x39, 0x39, 0x3A, 0x3A, 0x3B,
@@ -20,21 +20,21 @@ const CIRCLE: [u8; 128] = [
 
 /// The frames of formation parts $AA by angle / 8 (bank 7 $B422) and $A9 by distance / 8
 /// (bank 7 $B41A).
-const FORMATION_B_FRAMES: [u8; 32] = [
+pub(crate) const FORMATION_B_FRAMES: [u8; 32] = [
     0x91, 0x92, 0x92, 0x93, 0x93, 0x94, 0x94, 0x95, 0x95, 0x94, 0x94, 0x93, 0x93, 0x92, 0x92, 0x91,
     0x91, 0x92, 0x92, 0x93, 0x93, 0x94, 0x94, 0x95, 0x95, 0x94, 0x94, 0x93, 0x93, 0x92, 0x92, 0x91,
 ];
-const FORMATION_A_FRAMES: [u8; 8] = [0x8D, 0x8E, 0x8E, 0x8F, 0x8F, 0x90, 0x90, 0x8D];
+pub(crate) const FORMATION_A_FRAMES: [u8; 8] = [0x8D, 0x8E, 0x8E, 0x8F, 0x8F, 0x90, 0x90, 0x8D];
 
 /// Where a part of a formation shoots from, by frame $91-$95 (behaviour.md 4.12).
-const FORMATION_MUZZLE: [(i16, i16); 5] = [(0, 14), (7, 11), (9, 9), (11, 7), (14, 0)];
+pub(crate) const FORMATION_MUZZLE: [(i16, i16); 5] = [(0, 14), (7, 11), (9, 9), (11, 7), (14, 0)];
 
 /// The patrol routes of the shuttling creatures (types 21 and 22, behaviour.md 2.7): level,
 /// placement-list index, first and second waypoint.
 /// A level, a placement-list index and the two waypoints.
-type Route = (u8, u8, (u16, u16), (u16, u16));
+pub(crate) type Route = (u8, u8, (u16, u16), (u16, u16));
 
-const ROUTES: &[Route] = &[
+pub(crate) const ROUTES: &[Route] = &[
     (2, 25, (1280, 1627), (1280, 1920)),
     (2, 26, (2684, 1495), (2684, 1288)),
     (3, 51, (690, 1585), (690, 1665)),

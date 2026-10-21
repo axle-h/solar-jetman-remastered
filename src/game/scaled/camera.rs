@@ -1,13 +1,8 @@
 //! The camera (`docs/spec/levels.md` 5.2): placed from the player at the start of play, then
 //! moved in half-steps in both passes of a logic step.
 
+use crate::game::gameplay::camera::{BAND_DOWN, BAND_LEFT, BAND_RIGHT, BAND_UP};
 use crate::game::level::{Level, Point};
-
-/// Band the player stays inside on screen (levels.md 5.2).
-const BAND_RIGHT: i32 = 144;
-const BAND_LEFT: i32 = 112;
-const BAND_DOWN: i32 = 96;
-const BAND_UP: i32 = 64;
 
 /// The camera: the world position of the playfield's top-left pixel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

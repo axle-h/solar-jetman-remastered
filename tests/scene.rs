@@ -5,12 +5,7 @@ use solar_jetman::game::gameplay::input::Buttons;
 use solar_jetman::game::scene::{Assets, Game, SoundRequest, Start};
 
 fn assets() -> Option<Assets> {
-    let repo = solar_jetman::tools::repo_root();
-    let Ok((_, rom)) = solar_jetman::tools::load_rom(&repo, None) else {
-        eprintln!("skipped: no ROM");
-        return None;
-    };
-    Some(solar_jetman::tools::assets(&rom).unwrap())
+    Some(solar_jetman::tools::assets(solar_jetman::tools::test_rom()?).unwrap())
 }
 
 fn pass(game: &mut Game, assets: &Assets, mask: u8) {

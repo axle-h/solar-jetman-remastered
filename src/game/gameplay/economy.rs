@@ -91,7 +91,7 @@ pub const CARGO_VALUES: [u32; 17] = [
 ];
 
 /// The score a delivered kind adds 64 frames into its message screen (economy.md 2.4).
-fn kind_value(kind: u8, cargo: u8) -> u32 {
+pub(crate) fn kind_value(kind: u8, cargo: u8) -> u32 {
     match kind {
         5 => 1000,
         12 => 750,
@@ -101,12 +101,12 @@ fn kind_value(kind: u8, cargo: u8) -> u32 {
 }
 
 /// Item kinds that are never delivered (economy.md 2.2).
-fn is_delivery(kind: u8) -> bool {
+pub(crate) fn is_delivery(kind: u8) -> bool {
     !matches!(kind, 0 | 1 | 11 | 17 | 26)
 }
 
 /// Whether the pod of type `pod_type` (RAM $DC bits 0-1) tows items of `kind` (economy.md 2.1).
-fn towable(kind: u8, pod_type: u8) -> bool {
+pub(crate) fn towable(kind: u8, pod_type: u8) -> bool {
     match kind {
         3..=10 | 12..=16 | 19 => true,
         11 => pod_type >= 1,

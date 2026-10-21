@@ -8,28 +8,10 @@ use super::objects::{
     Env, INVISIBLE, ObjectTable, PLACED_SLOTS, SHOT_SLOTS, SLOTS, Score, relative, state,
 };
 use super::pod::Pod;
-
-/// The fitted weapon numbers RAM $D1 (economy.md 6) and what a shot costs the gauge.
-pub const HOMING: u8 = 1;
-pub const SMART_BOMB: u8 = 4;
-pub const TIME_BOMB: u8 = 5;
-pub const MULTI_WARHEAD: u8 = 6;
-pub const STAR_BULLETS: u8 = 8;
-
-/// The gauge units a shot of `weapon` costs (player.md 10.1), or `None` for a device.
-pub fn cost(weapon: u8) -> Option<u8> {
-    match weapon {
-        HOMING => Some(4),
-        TIME_BOMB => Some(32),
-        MULTI_WARHEAD => Some(16),
-        STAR_BULLETS => Some(32),
-        SMART_BOMB => Some(128),
-        _ => None,
-    }
-}
-
-/// The frames of a star child by its stage (behaviour.md 5.11.2).
-const CHILD_FRAMES: [u8; 6] = [0x27, 0x28, 0x29, 0x2F, 0x30, 0x31];
+use crate::game::gameplay::weapons::CHILD_FRAMES;
+pub use crate::game::gameplay::weapons::{
+    HOMING, MULTI_WARHEAD, SMART_BOMB, STAR_BULLETS, TIME_BOMB, cost,
+};
 
 impl ObjectTable {
     /// Makes the shot of `weapon` (not the smart bomb) at the gun's nose, if the slot it would

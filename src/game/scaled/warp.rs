@@ -4,20 +4,10 @@
 
 use super::Scaled;
 use super::objects::{Object, state};
+pub use crate::game::gameplay::warp::HELPER_SLOTS;
+use crate::game::gameplay::warp::{HELPER_START, HOME_SLOT_23, HOME_SLOT_24, MESH_TILE};
 use crate::game::graphics::LevelGraphics;
 use crate::game::level::{FIRST_WARP_LEVEL, Level, World};
-
-/// The warp set's first tile, the mesh that drifts (graphics.md 5.7.2).
-const MESH_TILE: u8 = 0x81;
-
-/// The two helper slots: slot 23's position drives the mesh tile.
-pub const HELPER_SLOTS: [usize; 2] = [23, 24];
-/// Where a homing helper starts (objects.md 10.6).
-const HELPER_START: (u16, u16) = (0, 16);
-/// Acceleration and top speed of the homing helpers, in 1/256 px per frame: slot 23 and slot
-/// 24 (objects.md 10.6).
-const HOME_SLOT_23: (u16, u16) = (2, 0x50);
-const HOME_SLOT_24: (u16, u16) = (3, 0x40);
 
 impl Scaled {
     /// The flag byte of the warp level (objects.md 10.6): bit 7 moves slot 23 as a homing
