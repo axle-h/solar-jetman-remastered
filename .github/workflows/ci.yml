@@ -16,6 +16,7 @@ jobs:
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
       - name: SDL3
         run: tools/ci/install-sdl3.sh
       - run: cargo fmt --all --check
@@ -45,6 +46,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.99.0
+      - uses: Swatinem/rust-cache@v2
       - name: SDL3 (Linux)
         if: runner.os == 'Linux'
         run: tools/ci/install-sdl3.sh
@@ -68,6 +70,7 @@ jobs:
         with:
           toolchain: 1.99.0
           targets: wasm32-unknown-emscripten
+      - uses: Swatinem/rust-cache@v2
       - uses: mymindstorm/setup-emsdk@v14
       - name: Library and app check
         run: cargo check --lib --bin solar-jetman --target wasm32-unknown-emscripten
