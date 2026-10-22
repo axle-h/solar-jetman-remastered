@@ -109,7 +109,7 @@ src/tools/          clean-room check, validation (bin: src/bin/sj-tools/)
 tests/              integration tests
 web/                the page of the browser build
 docs/               clean-room policy, reference environments, specifications
-tools/              headless Mesen runner, packaging scripts
+tools/              headless Mesen runner, packaging and CI scripts
 vendor/             your ROM, Mesen and its private config        (gitignored)
 ```
 

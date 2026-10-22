@@ -11,24 +11,13 @@ jobs:
     name: fmt, clippy, tests, clean room (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.99.0
           components: rustfmt, clippy
-      - name: SDL3 from the system
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libsdl3-dev pkg-config || {
-            echo "libsdl3-dev is not packaged on this runner; building SDL3 from source"
-            sudo apt-get install -y cmake ninja-build libx11-dev libxext-dev libxcursor-dev \
-              libxi-dev libxrandr-dev libxss-dev libwayland-dev libxkbcommon-dev \
-              libasound2-dev libpulse-dev libudev-dev libdrm-dev libgbm-dev libgl1-mesa-dev
-            git clone --depth 1 --branch release-3.4.0 https://github.com/libsdl-org/SDL /tmp/sdl
-            cmake -S /tmp/sdl -B /tmp/sdl/build -G Ninja -DCMAKE_BUILD_TYPE=Release
-            sudo cmake --build /tmp/sdl/build --target install
-            sudo ldconfig
-          }
+      - name: SDL3
+        run: tools/ci/install-sdl3.sh
       - run: cargo fmt --all --check
       - run: cargo clippy --all-targets -- -D warnings
       # ROM tests skip when there is no ROM (none in CI).
@@ -38,7 +27,7 @@ jobs:
   deny:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
@@ -52,15 +41,13 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.99.0
-      - name: SDL3 from the system (Linux)
+      - name: SDL3 (Linux)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libsdl3-dev pkg-config
+        run: tools/ci/install-sdl3.sh
       # Windows and macOS: the sdl3 crate builds SDL3 from source and links it statically
       # (needs CMake, which the runners have).
       - run: cargo build --release --bin solar-jetman
@@ -76,7 +63,7 @@ jobs:
     name: wasm32-unknown-emscripten
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.99.0
@@ -84,7 +71,8 @@ jobs:
       - uses: mymindstorm/setup-emsdk@v14
       - name: Library and app check
         run: cargo check --lib --bin solar-jetman --target wasm32-unknown-emscripten
-      - name: Link the app (SDL3 from emscripten's port)
+      # The same link as the Pages deploy (pages.yml); no ROM in CI, so no release scan.
+      - name: Link the page (SDL3 from emscripten's port)
         env:
-          RUSTFLAGS: -C link-arg=--use-port=sdl3 -C link-arg=-sASYNCIFY -C link-arg=-lidbfs.js
-        run: cargo build --release --bin solar-jetman --target wasm32-unknown-emscripten
+          SJ_SKIP_SCAN: 1
+        run: tools/package/web.sh

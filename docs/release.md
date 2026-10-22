@@ -24,6 +24,8 @@ Every release is built without the ROM and must pass `sj-tools scan-release` (no
 
 `tools/package/web.sh [OUT_DIR]` (default `target/package/web`) builds `src/app` for `wasm32-unknown-emscripten` with emsdk (`$EMSDK`, or `~/emsdk`), writes `index.html`, `index.js` and `index.wasm` to OUT_DIR, and runs `scan-release` on the `.wasm` (no hits). Serve the folder over http and open `index.html`. The link flags (`--use-port=sdl3`, ASYNCIFY, `-lidbfs.js`, the shell file) are set by the script through `CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS`; the web build never embeds the ROM.
 
+GitHub Pages: pushing a `v*` tag runs `.github/workflows/pages.yml`, which builds the page with `web.sh` and deploys it. CI has no ROM, so it builds with `SJ_SKIP_SCAN=1`: run `tools/package/web.sh` locally (scan included) on the commit before tagging it.
+
 How it works:
 - The page is `web/shell.html`. Before the program starts it mounts IDBFS at `/solar-jetman` (the player's folder, a fixed path in `Folder::locate`) and loads it from IndexedDB. `sjSync()` writes it back, batched; `src/app` calls it (`web.rs`) after settings, saves, the import and screenshots.
 - The main loop keeps its blocking shape; `web::pause` calls `emscripten_sleep` so the browser gets the thread.
