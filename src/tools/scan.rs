@@ -62,6 +62,22 @@ pub struct Region {
 /// The categories whose bytes must not be in a release: everything but commit, constants and fill.
 pub const NOT_COMMITTABLE: &[Category] = &[Category::Ripped, Category::Code, Category::Unknown];
 
+/// Tables of the remake that match ROM bytes the map does not mark as constants, but come from
+/// the specs: a hit inside one of them is allowed.
+pub const ALLOWED: &[(&[u8], &str)] = &[(
+    &crate::game::gameplay::final_level::HUES,
+    "final level terrain hues (graphics.md 7.5)",
+)];
+
+/// The `ALLOWED` table holding the bytes of `hit` in `data`, if any.
+pub fn allowed(hit: &Hit, data: &[u8]) -> Option<&'static str> {
+    let run = &data[hit.found_at..hit.found_at + hit.len];
+    ALLOWED
+        .iter()
+        .find(|(table, _)| table.windows(run.len()).any(|w| w == run))
+        .map(|&(_, what)| what)
+}
+
 fn hex(text: &str) -> Option<usize> {
     usize::from_str_radix(text.trim().strip_prefix("0x")?, 16).ok()
 }
@@ -306,5 +322,19 @@ mod tests {
         let cats = byte_categories(&parse_rom_map(MAP), prg.len());
         let data = vec![0u8; 100];
         assert!(scan(&data, &prg, &cats, &[Category::Ripped]).is_empty());
+    }
+
+    #[test]
+    fn allowed_tables() {
+        let (table, _) = ALLOWED[0];
+        let mut data = vec![0xEE; 8];
+        data.extend_from_slice(table);
+        let hit = |found_at, len| Hit {
+            rom_offset: 0,
+            found_at,
+            len,
+        };
+        assert!(allowed(&hit(8, table.len()), &data).is_some());
+        assert!(allowed(&hit(7, table.len()), &data).is_none());
     }
 }

@@ -1,7 +1,8 @@
 //! `sj-tools scan-release`.
 
 use solar_jetman::tools::scan::{
-    Category, Hit, NOT_COMMITTABLE, Region, byte_categories, parse_rom_map, region_at, scan,
+    Category, Hit, NOT_COMMITTABLE, Region, allowed, byte_categories, parse_rom_map, region_at,
+    scan,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,7 +16,18 @@ fn report(
     regions: &[Region],
     wanted: &[Category],
 ) -> usize {
-    let hits: Vec<Hit> = scan(data, prg, cats, wanted);
+    let (excused, hits): (Vec<Hit>, Vec<Hit>) = scan(data, prg, cats, wanted)
+        .into_iter()
+        .partition(|hit| allowed(hit, data).is_some());
+    for hit in &excused {
+        println!(
+            "  allowed {name} @ 0x{:X}: {} bytes = ROM 0x{:05X} ({})",
+            hit.found_at,
+            hit.len,
+            hit.rom_offset,
+            allowed(hit, data).unwrap_or_default(),
+        );
+    }
     for hit in &hits {
         let region = region_at(regions, hit.rom_offset);
         println!(
