@@ -2,6 +2,13 @@
 
 Every release is built without the ROM and must pass `sj-tools scan-release` (no graphics, sound or code bytes of the ROM in the binary). The scan needs the ROM (`vendor/` or `$SJ_ROM`), so it runs on a developer machine, not in CI.
 
+## Tagging
+
+Set `version` in `Cargo.toml`, run `tools/package/linux.sh` and `tools/package/web.sh` (scans included) on the commit, then push the tag `vVERSION`. The tag runs two workflows:
+
+- `.github/workflows/release.yml` checks that the tag matches the crate version, builds the Linux, Windows (`x86_64`) and macOS (`aarch64`, no `.app`, unsigned) archives with `SJ_SKIP_SCAN=1` and attaches them to a **draft** GitHub Release. Check it, then publish it on GitHub.
+- `.github/workflows/pages.yml` deploys the web build (below).
+
 ## Linux
 
 `tools/package/linux.sh [OUT_DIR]` builds the release binary, strips it, scans it and writes `solar-jetman-VERSION-linux-x86_64.tar.gz` with the binary, `LICENSE`, `README.md` and `THIRD-PARTY-NOTICES.txt` (licence files of the linked crates, from `cargo metadata`). Needs SDL3 installed (the binary links the system library). `SJ_SKIP_SCAN=1` is for dry runs only.

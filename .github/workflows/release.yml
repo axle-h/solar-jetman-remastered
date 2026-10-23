@@ -1,0 +1,102 @@
+name: Release
+# Builds the desktop archives for each v* tag and attaches them to a draft GitHub Release.
+# No ROM in CI: scan-release runs on a developer machine before tagging (docs/release.md).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  package:
+    name: package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            suffix: linux-x86_64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            suffix: windows-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            suffix: macos-aarch64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
+      - uses: Swatinem/rust-cache@v2
+      # Windows runners have python but not always python3.
+      - name: Python
+        run: echo "PYTHON=$(command -v python3 || command -v python)" >> "$GITHUB_ENV"
+      - name: Tag matches the crate version
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 |
+            "$PYTHON" -I -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"]=="solar-jetman"))')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match Cargo.toml version $version" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: SDL3 (Linux)
+        if: runner.os == 'Linux'
+        run: tools/ci/install-sdl3.sh
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        env:
+          SJ_SKIP_SCAN: 1
+        run: tools/package/linux.sh target/package
+      # Windows and macOS: the layout docs/release.md describes, without the .app bundle or signing.
+      - name: Package (Windows, macOS)
+        if: runner.os != 'Linux'
+        run: |
+          name="solar-jetman-$VERSION-${{ matrix.suffix }}"
+          stage="target/package/$name"
+          cargo build --release --bin solar-jetman
+          mkdir -p "$stage"
+          if [ "$RUNNER_OS" = Windows ]; then
+            cp target/release/solar-jetman.exe "$stage/"
+          else
+            cp target/release/solar-jetman "$stage/"
+            strip "$stage/solar-jetman"
+          fi
+          cp LICENSE README.md "$stage/"
+          cargo metadata --format-version 1 --filter-platform ${{ matrix.target }} |
+            "$PYTHON" -I tools/package/notices.py > "$stage/THIRD-PARTY-NOTICES.txt"
+          if [ "$RUNNER_OS" = Windows ]; then
+            (cd target/package && 7z a "$name.zip" "$name")
+          else
+            tar -C target/package -czf "target/package/$name.tar.gz" "$name"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.suffix }}
+          path: |
+            target/package/*.tar.gz
+            target/package/*.zip
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "$GITHUB_REF_NAME"
