@@ -2,7 +2,7 @@
 //! pack, with `manifest.toml`) and `rom.nes`, a copy of the ROM the pack came from, so that a
 //! newer importer can run again without asking.
 
-use crate::settings::Settings;
+use super::settings::Settings;
 use solar_jetman::rom::{IMPORTER_VERSION, MANIFEST_PATH, Manifest, PRG_SHA1};
 use std::collections::BTreeMap;
 use std::fs;
@@ -31,12 +31,14 @@ impl Folder {
     /// The platform's per-user data folder, or `$SJ_FOLDER` when set.
     pub fn locate() -> Result<Folder, String> {
         #[cfg(target_os = "emscripten")]
-        return Ok(Folder::at(crate::web::FOLDER.into()));
-        #[cfg(not(target_os = "emscripten"))]
+        return Ok(Folder::at(super::web::FOLDER.into()));
+        #[cfg(target_os = "android")]
+        return android_folder().map(Folder::at);
+        #[cfg(not(any(target_os = "emscripten", target_os = "android")))]
         if let Some(path) = std::env::var_os("SJ_FOLDER") {
             return Ok(Folder::at(path.into()));
         }
-        #[cfg(not(target_os = "emscripten"))]
+        #[cfg(not(any(target_os = "emscripten", target_os = "android")))]
         {
             let dirs = directories::ProjectDirs::from("", "", "solar-jetman-remastered")
                 .ok_or("cannot find the player's folder (no home directory)")?;
@@ -83,7 +85,7 @@ impl Folder {
         let packed = miniz_oxide::deflate::compress_to_vec(state, 6);
         fs::write(&temporary, packed).map_err(|e| io(&temporary, e))?;
         fs::rename(&temporary, &path).map_err(|e| io(&path, e))?;
-        crate::web::sync_folder();
+        super::web::sync_folder();
         Ok(())
     }
 
@@ -101,7 +103,7 @@ impl Folder {
     }
 
     /// Which slots hold a state.
-    pub fn filled_slots(&self) -> [bool; crate::settings::SLOTS] {
+    pub fn filled_slots(&self) -> [bool; super::settings::SLOTS] {
         std::array::from_fn(|slot| self.save_path(slot).is_file())
     }
 
@@ -126,7 +128,7 @@ impl Folder {
     pub fn save_settings(&self, settings: &Settings) -> Result<(), String> {
         let path = self.settings_path();
         fs::write(&path, settings.to_ini()).map_err(|e| io(&path, e))?;
-        crate::web::sync_folder();
+        super::web::sync_folder();
         Ok(())
     }
 
@@ -150,7 +152,7 @@ impl Folder {
         }
         let rom = self.rom_path();
         fs::write(&rom, rom_file).map_err(|e| io(&rom, e))?;
-        crate::web::sync_folder();
+        super::web::sync_folder();
         Ok(())
     }
 
@@ -173,6 +175,35 @@ impl Folder {
     /// The ROM file kept from the last import, if any.
     pub fn stored_rom(&self) -> Option<Vec<u8>> {
         fs::read(self.rom_path()).ok()
+    }
+}
+
+/// The app's folder on shared storage, `Android/data/<package>/files`, where a file manager
+/// or a USB cable reaches the saves and screenshots; the app's internal storage when shared
+/// storage cannot be written. Android deletes both with the app.
+#[cfg(target_os = "android")]
+fn android_folder() -> Result<PathBuf, String> {
+    use sdl3::sys::system::{
+        SDL_ANDROID_EXTERNAL_STORAGE_WRITE, SDL_GetAndroidExternalStoragePath,
+        SDL_GetAndroidExternalStorageState, SDL_GetAndroidInternalStoragePath,
+    };
+    use std::ffi::CStr;
+    // SAFETY: SDL's Java side is up before `SDL_main` runs, and the paths it returns are
+    // NUL-terminated strings that SDL keeps.
+    unsafe {
+        let mut path = std::ptr::null();
+        if SDL_GetAndroidExternalStorageState() & SDL_ANDROID_EXTERNAL_STORAGE_WRITE != 0 {
+            path = SDL_GetAndroidExternalStoragePath();
+        }
+        if path.is_null() {
+            path = SDL_GetAndroidInternalStoragePath();
+        }
+        if path.is_null() {
+            return Err(format!("no folder for the game: {}", sdl3::get_error()));
+        }
+        Ok(PathBuf::from(
+            CStr::from_ptr(path).to_string_lossy().into_owned(),
+        ))
     }
 }
 
@@ -210,7 +241,10 @@ mod tests {
     fn save_slots_round_trip_and_start_empty() {
         let folder = temp("saves");
         folder.create().unwrap();
-        assert_eq!(folder.filled_slots(), [false; crate::settings::SLOTS]);
+        assert_eq!(
+            folder.filled_slots(),
+            [false; super::super::settings::SLOTS]
+        );
         assert_eq!(folder.read_save(1).unwrap(), None);
         let state: Vec<u8> = (0..5000u32).map(|n| (n % 7) as u8).collect();
         folder.write_save(1, &state).unwrap();
@@ -267,10 +301,10 @@ mod tests {
         folder.create().unwrap();
         let mut settings = folder.load_settings();
         assert!(settings.remastered);
-        let mut menu = crate::menu::Menu::default();
+        let mut menu = super::super::menu::Menu::default();
         menu.toggle();
         // The first row is the physics.
-        let out = menu.handle(crate::menu::Nav::Right, &mut settings);
+        let out = menu.handle(super::super::menu::Nav::Right, &mut settings);
         assert!(out.settings_changed);
         folder.save_settings(&settings).unwrap();
         let text = fs::read_to_string(folder.root().join("settings.ini")).unwrap();

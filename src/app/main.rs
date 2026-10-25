@@ -149,8 +149,26 @@ fn import_bytes(file: Vec<u8>) -> Result<(Files, Vec<u8>), String> {
 }
 
 fn import_file(path: &Path) -> Result<(Files, Vec<u8>), String> {
-    let file = std::fs::read(path).map_err(|error| format!("{}: {error}", path.display()))?;
+    let file = read_file(path).map_err(|error| format!("{}: {error}", path.display()))?;
     import_bytes(file)
+}
+
+/// A file's bytes. On Android through SDL, which also opens the `content://` URIs that the
+/// system's file picker gives.
+fn read_file(path: &Path) -> Result<Vec<u8>, String> {
+    #[cfg(target_os = "android")]
+    {
+        use std::io::Read;
+        let mut stream =
+            sdl3::iostream::IOStream::from_file(path, "rb").map_err(|error| error.to_string())?;
+        let mut bytes = Vec::new();
+        stream
+            .read_to_end(&mut bytes)
+            .map_err(|error| error.to_string())?;
+        Ok(bytes)
+    }
+    #[cfg(not(target_os = "android"))]
+    std::fs::read(path).map_err(|error| error.to_string())
 }
 
 /// Imports a file into the player's folder.
@@ -289,6 +307,8 @@ fn load_from_slot(
     }
 }
 
+// The Android library (`android.rs`) calls `run` itself.
+#[cfg_attr(feature = "android", allow(dead_code))]
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
@@ -392,23 +412,24 @@ fn ask_for_rom(
                 Err(message) => *status = message,
             }
         }
-        let mut text = format!(
-            "Solar Jetman needs the game's data from your own copy of the ROM (USA, NES).\n\n\
-             Drop the .nes file, or a .zip holding it, onto this {}",
-            if cfg!(target_os = "emscripten") {
-                "page"
-            } else {
-                "window"
-            }
-        );
-        if cfg!(not(target_os = "emscripten")) {
+        let mut text = "Solar Jetman needs the game's data from your own copy of the ROM (USA, \
+                        NES).\n\n"
+            .to_owned();
+        if cfg!(target_os = "android") {
+            // Nothing can be dropped on an Android app.
+            text.push_str("Press A to choose the .nes file, or a .zip holding it");
+        } else if cfg!(target_os = "emscripten") {
+            text.push_str(
+                "Drop the .nes file, or a .zip holding it, onto this page, or use the Choose \
+                 ROM button under it",
+            );
+        } else {
             let start = controls::key_name(shell.input.keys().get(controls::Control::Start));
             text.push_str(&format!(
-                ", or press {} (A on a gamepad) to choose it",
+                "Drop the .nes file, or a .zip holding it, onto this window, or press {} (A on \
+                 a gamepad) to choose it",
                 start.to_lowercase()
             ));
-        } else {
-            text.push_str(", or use the Choose ROM button under it");
         }
         text.push('.');
         if !status.is_empty() {
@@ -434,8 +455,14 @@ fn open_dialog(window: &sdl3::video::Window, send: &mpsc::Sender<PathBuf>) -> bo
             pattern: "*",
         },
     ];
+    // Android filters by MIME type, and has none for `.nes`: every file is offered there.
+    let filters = if cfg!(target_os = "android") {
+        &filters[..0]
+    } else {
+        &filters[..]
+    };
     sdl3::dialog::show_open_file_dialog(
-        &filters,
+        filters,
         None::<&Path>,
         false,
         window,
@@ -483,7 +510,7 @@ fn save_screenshot(folder: &Folder, (rgb, width): (&[u8], usize)) -> Result<Path
     Ok(path)
 }
 
-fn run() -> Result<(), String> {
+pub fn run() -> Result<(), String> {
     let options = options()?;
     let folder = Folder::locate()?;
     folder.create()?;

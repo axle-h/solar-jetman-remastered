@@ -69,13 +69,31 @@ pub const ALLOWED: &[(&[u8], &str)] = &[(
     "final level terrain hues (graphics.md 7.5)",
 )];
 
-/// The `ALLOWED` table holding the bytes of `hit` in `data`, if any.
+/// PRG ranges (start, length) that a build was found to match by chance, not because it holds
+/// them: a hit inside one is allowed. Only an offset is recorded, never the bytes.
+pub const CHANCE: &[(usize, usize, &str)] = &[(
+    0x29312,
+    17,
+    "chance match: two adjacent 16-byte constants of the Android arm64 library (layout \
+     numbers of the printer messages and a deserializer's), low-entropy bytes",
+)];
+
+/// The `ALLOWED` table holding the bytes of `hit` in `data`, or the `CHANCE` range holding
+/// `hit`, if any.
 pub fn allowed(hit: &Hit, data: &[u8]) -> Option<&'static str> {
     let run = &data[hit.found_at..hit.found_at + hit.len];
     ALLOWED
         .iter()
         .find(|(table, _)| table.windows(run.len()).any(|w| w == run))
         .map(|&(_, what)| what)
+        .or_else(|| {
+            CHANCE
+                .iter()
+                .find(|&&(start, len, _)| {
+                    hit.rom_offset >= start && hit.rom_offset + hit.len <= start + len
+                })
+                .map(|&(_, _, what)| what)
+        })
 }
 
 fn hex(text: &str) -> Option<usize> {
@@ -336,5 +354,20 @@ mod tests {
         };
         assert!(allowed(&hit(8, table.len()), &data).is_some());
         assert!(allowed(&hit(7, table.len()), &data).is_none());
+    }
+
+    #[test]
+    fn chance_ranges() {
+        let (start, len, _) = CHANCE[0];
+        let data = vec![0xEE; 64];
+        let hit = |rom_offset, len| Hit {
+            rom_offset,
+            found_at: 0,
+            len,
+        };
+        assert!(allowed(&hit(start, len), &data).is_some());
+        assert!(allowed(&hit(start + 1, len - 1), &data).is_some());
+        assert!(allowed(&hit(start, len + 1), &data).is_none());
+        assert!(allowed(&hit(start - 1, len), &data).is_none());
     }
 }

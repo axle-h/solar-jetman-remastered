@@ -1,0 +1,12 @@
+# The Android build's context (android/Dockerfile): the sources, never the ROM in vendor/
+/vendor
+/target
+/dist
+/.git
+/.claude
+/.idea
+/tools/scaled-lab/out
+/android/.gradle
+/android/build
+/android/app/build
+/android/*.keystore

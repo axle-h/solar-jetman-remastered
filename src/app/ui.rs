@@ -1,8 +1,8 @@
 //! Drawing the port menu and the message screens with the port's own font.
 
-use crate::font::{PITCH_X, PITCH_Y, Rgb, Surface, text_width};
-use crate::menu::Menu;
-use crate::settings::{SLOTS, Settings};
+use super::font::{PITCH_X, PITCH_Y, Rgb, Surface, text_width};
+use super::menu::Menu;
+use super::settings::{SLOTS, Settings};
 
 const WHITE: Rgb = [236, 236, 236];
 const GREY: Rgb = [120, 120, 130];

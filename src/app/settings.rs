@@ -1,7 +1,7 @@
 //! The port's settings and their file, `settings.ini`: `key = value` lines under `[section]`
 //! headers. Unknown keys and bad values are ignored, so an edited or older file still loads.
 
-use crate::controls::{self, Control, Keys, Pad};
+use super::controls::{self, Control, Keys, Pad};
 use solar_jetman::game::gameplay::Cheats;
 
 /// Highest volume step; steps run from 0 to this.
@@ -43,7 +43,8 @@ impl Default for Settings {
         Settings {
             vsync: true,
             scale: 3,
-            fullscreen: false,
+            // Android has no windows; this hides its system bars.
+            fullscreen: cfg!(target_os = "android"),
             crop_overscan: true,
             native_aspect: false,
             volume: MAX_VOLUME,

@@ -28,3 +28,11 @@ ppu-writes.txt
 # Claude Code agent worktrees
 /.claude/worktrees/
 /tools/scaled-lab/out
+
+# tools/package/android.sh's signing key, which must outlive every build, and what Gradle
+# leaves if the Android project is opened outside the Docker build
+/android/*.keystore
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties

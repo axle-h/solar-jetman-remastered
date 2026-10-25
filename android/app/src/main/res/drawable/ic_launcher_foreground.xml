@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A planet's limb under a small craft with its thrust lit, among stars. 108dp square, of
+     which the launcher shows about the middle 66. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- stars -->
+    <path android:fillColor="#FFFFFF" android:pathData="M30,32h2v2h-2z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M74,28h2v2h-2z" />
+    <path android:fillColor="#9FB4FF" android:pathData="M62,40h2v2h-2z" />
+    <path android:fillColor="#9FB4FF" android:pathData="M38,50h2v2h-2z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M80,52h2v2h-2z" />
+    <!-- the planet -->
+    <path android:fillColor="#2F7A52" android:pathData="M20,86a50,30 0,0 1,68 0z" />
+    <path android:fillColor="#58B87A" android:pathData="M34,78a26,10 0,0 1,22 -6a8,4 0,0 1,-22 6z" />
+    <!-- the flame -->
+    <path android:fillColor="#FF8A1F" android:pathData="M49,62h10l-5,13z" />
+    <path android:fillColor="#FFE14A" android:pathData="M51,62h6l-3,7z" />
+    <!-- the craft -->
+    <path android:fillColor="#D9DDE8" android:pathData="M54,34a12,12 0,0 1,12 12v10l4,6h-32l4,-6v-10a12,12 0,0 1,12 -12z" />
+    <path android:fillColor="#3A7BFF" android:pathData="M54,40a6,6 0,0 1,6 6v2h-12v-2a6,6 0,0 1,6 -6z" />
+</vector>

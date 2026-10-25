@@ -1,8 +1,8 @@
 //! The port menu (F1): the model, with no window. It owns the cursor and changes
 //! [`Settings`]; the program saves them and applies them. `ui` draws it.
 
-use crate::controls::{self, Control, Device, Keys, Pad, Pressed};
-use crate::settings::{FINAL_LEVEL, MAX_SCALE, MAX_VOLUME, SLOTS, Settings};
+use super::controls::{self, Control, Device, Keys, Pad, Pressed};
+use super::settings::{FINAL_LEVEL, MAX_SCALE, MAX_VOLUME, SLOTS, Settings};
 use std::time::Duration;
 
 /// How long the menu waits for the key or button to bind.
@@ -95,6 +95,10 @@ impl Page {
                 Row::Reset,
                 Row::Quit,
             ],
+            // Android has no windows: the picture always fills the screen.
+            Page::Video if cfg!(target_os = "android") => {
+                &[Row::Vsync, Row::Overscan, Row::Aspect, Row::Back]
+            }
             Page::Video => &[
                 Row::Vsync,
                 Row::Scale,

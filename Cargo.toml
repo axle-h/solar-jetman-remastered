@@ -1,6 +1,6 @@
 [package]
 name = "solar-jetman"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 publish = false
@@ -30,6 +30,21 @@ sdl3 = { version = "=0.20.0", features = ["build-from-source-static"] }
 
 [target.'cfg(target_os = "emscripten")'.dependencies]
 sdl3 = "=0.20.0"
+
+# Android: links the libSDL3.so that tools/package/android.sh builds for the APK.
+[target.'cfg(target_os = "android")'.dependencies]
+sdl3 = "=0.20.0"
+
+[features]
+# Builds the Android library below; only tools/package/android.sh turns it on.
+android = []
+
+# The program as the library SDL's Android activity loads (docs/android.md).
+[[example]]
+name = "solar-jetman-android"
+path = "src/app/android.rs"
+crate-type = ["cdylib"]
+required-features = ["android"]
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

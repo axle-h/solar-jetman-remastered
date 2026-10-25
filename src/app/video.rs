@@ -2,10 +2,10 @@
 //! centred with black bars, and turns keyboard and gamepad events into the controls bound to
 //! them (`controls`).
 
-use crate::controls::{Control, Device, Keys, Pad, Pressed};
-use crate::font::Surface;
-use crate::menu::Nav;
-use crate::settings::Settings;
+use super::controls::{Control, Device, Keys, Pad, Pressed};
+use super::font::Surface;
+use super::menu::Nav;
+use super::settings::Settings;
 use sdl3::event::Event;
 use sdl3::gamepad::Gamepad;
 use sdl3::pixels::{Color, PixelFormat};
@@ -71,6 +71,15 @@ fn frame_width(settings: &Settings, display: Option<(u32, u32)>) -> usize {
 
 impl Screen {
     pub fn open(settings: &Settings) -> Result<Screen, String> {
+        // Android: the back button reaches the program as a key (the port menu's,
+        // `Keys::default`) instead of closing the app, a handheld's accelerometer is not a
+        // gamepad, and the picture stays landscape.
+        #[cfg(target_os = "android")]
+        {
+            sdl3::hint::set("SDL_ANDROID_TRAP_BACK_BUTTON", "1");
+            sdl3::hint::set("SDL_ACCELEROMETER_AS_JOYSTICK", "0");
+            sdl3::hint::set("SDL_ORIENTATIONS", "LandscapeLeft LandscapeRight");
+        }
         let sdl = sdl3::init().map_err(sdl_error)?;
         let video = sdl.video().map_err(sdl_error)?;
         // The bindings have no setter for the 2D renderer's vsync; SDL reads this hint when
@@ -349,6 +358,11 @@ impl Input {
             let mut control = None;
             match event {
                 Event::Quit { .. } => events.quit = true,
+                // Only a phone or handheld sends this: the player has switched away, so the
+                // game waits in the port menu.
+                Event::AppWillEnterBackground { .. } if !self.menu_open => {
+                    events.menu_toggle = true;
+                }
                 Event::DropFile { filename, .. } => events.dropped.push(filename.into()),
                 Event::KeyDown {
                     scancode: Some(key),

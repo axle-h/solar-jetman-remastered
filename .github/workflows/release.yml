@@ -87,8 +87,38 @@ jobs:
             target/package/*.zip
           if-no-files-found: error
 
+  # The APK, built in Docker (docs/android.md) and signed with the key the players' installs
+  # carry: android/release.keystore, kept as the ANDROID_KEYSTORE_BASE64 and
+  # ANDROID_KEYSTORE_PASSWORD secrets.
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.99.0
+      - name: Signing key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "the ANDROID_KEYSTORE_BASE64 secret is not set" >&2
+            exit 1
+          fi
+          echo "$KEYSTORE" | base64 -d > android/release.keystore
+      - name: Package
+        env:
+          SJ_SKIP_SCAN: 1
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: tools/package/android.sh target/package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android-arm64
+          path: target/package/*.apk
+          if-no-files-found: error
+
   release:
-    needs: package
+    needs: [package, android]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v5

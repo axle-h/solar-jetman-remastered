@@ -1,6 +1,6 @@
 # Solar Jetman remastered
 
-A clean-room re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warpship* (NES, 1990) in Rust, for Linux, Windows and macOS. It plays as the original did, without the NES's flicker, slowdown and bugs, and with smooth, low-latency motion on modern displays.
+A clean-room re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warpship* (NES, 1990) in Rust, for Linux, Windows, macOS and Android handhelds. It plays as the original did, without the NES's flicker, slowdown and bugs, and with smooth, low-latency motion on modern displays.
 
 **This project contains none of the original game's code, graphics or sound. You need your own copy of the USA ROM**, `Solar Jetman - Hunt for the Golden Warpship (USA).nes` (or a `.zip` holding it). Other releases and hacks are not accepted.
 
@@ -11,6 +11,8 @@ A clean-room re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warp
    - **Windows and macOS:** SDL3 is built in; nothing else to install.
 2. Run `solar-jetman` (`solar-jetman.exe` on Windows).
 3. At the first start the game asks for your ROM. Drop the `.nes` or `.zip` onto the window, or press Enter (A on a gamepad) to pick it in a file dialog. You can also start it with `solar-jetman --import PATH`.
+
+**Android handhelds:** install the APK (no touch controls; play with the built-in pad or a controller). At the first start, press A to pick your ROM in Android's file picker. The system's back button opens the port menu. See [docs/android.md](docs/android.md).
 
 The game checks the ROM, converts its graphics and sound into your player folder (keeping a copy of the ROM there, so a newer version can convert it again), and never asks again.
 
@@ -29,7 +31,7 @@ The game checks the ROM, converts its graphics and sound into your player folder
 
    The release build asks for your ROM at first start, as above. For development, put the ROM in `vendor/rom/`: a debug build (`cargo run`) then embeds it and starts without the import step.
 
-`docs/release.md` describes packaging, including the browser build.
+`docs/release.md` describes packaging, including the browser and Android builds.
 
 ## Controls
 
@@ -81,6 +83,7 @@ Settings (`settings.ini`), save states (`saves/`), screenshots (`screenshots/`),
 - Linux: `~/.local/share/solar-jetman-remastered/`
 - Windows: `%APPDATA%\solar-jetman-remastered\data\`
 - macOS: `~/Library/Application Support/solar-jetman-remastered/`
+- Android: `Android/data/com.ax_h.solarjetman/files/` on the device's shared storage
 
 Set `SJ_FOLDER` to use another folder.
 
@@ -108,6 +111,7 @@ src/app/            the program (solar-jetman): SDL3 window, input, audio, port 
 src/tools/          clean-room check, validation (bin: src/bin/sj-tools/)
 tests/              integration tests
 web/                the page of the browser build
+android/            the Android app around the program (docs/android.md)
 docs/               clean-room policy, reference environments, specifications
 tools/              headless Mesen runner, packaging and CI scripts
 vendor/             your ROM, Mesen and its private config        (gitignored)

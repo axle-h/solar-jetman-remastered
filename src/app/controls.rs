@@ -146,7 +146,8 @@ pub type Pad = Bindings<Button>;
 
 impl Default for Keys {
     /// Arrows, X for A (fire), Z for B (thrust), Backspace for Select, Enter for Start, and
-    /// F1, F5, F9, F12 and Escape for the port.
+    /// F1, F5, F9, F12 and Escape for the port. On Android, the system's back button is the
+    /// port menu's key rather than F1.
     fn default() -> Self {
         Bindings([
             Some(Scancode::X),
@@ -157,7 +158,11 @@ impl Default for Keys {
             Some(Scancode::Right),
             Some(Scancode::Backspace),
             Some(Scancode::Return),
-            Some(Scancode::F1),
+            Some(if cfg!(target_os = "android") {
+                Scancode::AcBack
+            } else {
+                Scancode::F1
+            }),
             Some(Scancode::F5),
             Some(Scancode::F9),
             Some(Scancode::F12),

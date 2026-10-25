@@ -4,9 +4,9 @@ Every release is built without the ROM and must pass `sj-tools scan-release` (no
 
 ## Tagging
 
-Set `version` in `Cargo.toml`, run `tools/package/linux.sh` and `tools/package/web.sh` (scans included) on the commit, then push the tag `vVERSION`. The tag runs two workflows:
+Set `version` in `Cargo.toml`, run `tools/package/linux.sh`, `tools/package/web.sh` and `tools/package/android.sh` (scans included) on the commit, then push the tag `vVERSION`. The tag runs two workflows:
 
-- `.github/workflows/release.yml` checks that the tag matches the crate version, builds the Linux, Windows (`x86_64`) and macOS (`aarch64`, no `.app`, unsigned) archives with `SJ_SKIP_SCAN=1` and attaches them to a **draft** GitHub Release. Check it, then publish it on GitHub.
+- `.github/workflows/release.yml` checks that the tag matches the crate version, builds the Linux, Windows (`x86_64`) and macOS (`aarch64`, no `.app`, unsigned) archives and the Android APK with `SJ_SKIP_SCAN=1` and attaches them to a **draft** GitHub Release. Check it, then publish it on GitHub.
 - `.github/workflows/pages.yml` deploys the web build (below).
 
 ## Linux
@@ -26,6 +26,10 @@ Set `version` in `Cargo.toml`, run `tools/package/linux.sh` and `tools/package/w
 2. Build as above (once per `aarch64-apple-darwin` and `x86_64-apple-darwin`, or `lipo` the two into one binary).
 3. Scan the binary as above.
 4. Put the binary in `Solar Jetman.app/Contents/MacOS/`, add an `Info.plist`, then sign and notarise (needs an Apple developer account); zip or make a dmg with `LICENSE` and the notices (`--filter-platform aarch64-apple-darwin`).
+
+## Android
+
+`tools/package/android.sh [OUT_DIR]` builds `solar-jetman-VERSION-android-arm64.apk` in Docker, scans the game's library in it and signs it with `android/release.keystore` (made on the first build; keep it). The release workflow builds it too, signing with the same key from the `ANDROID_KEYSTORE_BASE64` (the keystore, base64) and `ANDROID_KEYSTORE_PASSWORD` secrets. See [android.md](android.md).
 
 ## Web (emscripten)
 

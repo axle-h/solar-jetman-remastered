@@ -19,7 +19,7 @@ Read first: `docs/CLEAN_ROOM.md` (the rules), `docs/spec/` (what to implement fr
 
 ## Conventions
 
-- **One crate**, `solar-jetman`, edition 2024: a library (`src/lib.rs`) and two binaries, `solar-jetman` (`src/app/`, `cargo run`) and `sj-tools` (`src/bin/sj-tools/`). Dependencies in `Cargo.toml` with exact versions (`=x.y.z`); keep them few.
+- **One crate**, `solar-jetman`, edition 2024: a library (`src/lib.rs`) and two binaries, `solar-jetman` (`src/app/`, `cargo run`) and `sj-tools` (`src/bin/sj-tools/`). On Android, `src/app/` is built as a library instead (`docs/android.md`), so its modules name each other with `super::`, not `crate::`. Dependencies in `Cargo.toml` with exact versions (`=x.y.z`); keep them few.
 - **Platform-free core:** `src/game`, `src/rom` and `src/apu` do no file, window or audio I/O (the clean-room check enforces it), and `#![forbid(unsafe_code)]`. The library and the app must build for `wasm32-unknown-emscripten`.
 - **Our own names:** no decompiler identifiers (`FUN_`, `DAT_`, `LAB_`, `uVar`, `param_`, …) or 6502 assembly anywhere. `cargo run --bin sj-tools -- cleanroom` checks.
 - **Fidelity:** faithful to the original, minus hardware limitations (no flicker, sprite limits, slowdown or seams) and minus bugs and glitches. Additions go behind port-menu switches.
