@@ -263,8 +263,12 @@ slots 23-30, have no straight phase and live differently: 5.11.
 
 Places a new object just outside the screen, near the pod's row or column:
 
-- If bit 1 of R2 is set: a left or right edge. Left (bit 2 of R2 set): x = camera x − 32; if that is negative use the
-  right edge. Right: x = camera x + 288; if that is past the map's last page use the left edge. y = pod y + r − 64
+- If bit 1 of R2 is set: a left or right edge. Left (bit 2 of R2 set): x = camera x − 32 (rx = −32); if that is negative use the
+  right edge. Right: x = camera x + 288 (rx = 288, that is screen width 256 + 32); if its high byte is above the map's last page
+  index (RAM $38 = header byte 8 >> 1, i.e. x ≥ map width) use the left edge. If the first choice fails the other side is
+  tried; if both fail (a map narrower than the screen plus 32, which no level is) the top/bottom rule below is used. **[C]**
+  (read again 2026-10-25.) The two x values are screen-relative: with a wider view they are the view's left edge − 32 and right
+  edge + 32 (`objects.md` 3.7 rule 7), the map-edge tests apply to the resulting x. y = pod y + r − 64
   + (1 if r ≥ 64), r = R1 mod 128, added to the low byte only (the high byte is the pod's).
 - Else: a top or bottom edge. Top (bit 2 of R2 set): y = camera y − 48. Bottom: y = camera y + 208, or the top if that
   is below the map. x = pod x + r − 32 + (1 if r ≥ 32), r = R2 mod 64, on the low byte only.
@@ -865,7 +869,7 @@ when it is above the pod (the 3 of 6 starts seen with |dx| ≥ 256 that were abo
 pod exactly like $B4 (accel 8, M = 4, both axes).
 
 **$B6 (types 59-5D; initial frame $FF (invisible), hit points 1):** waits (not moving) until the camera x (16-bit)
-is at or beyond the object's x. Then: horizontal speed = 4 + R / 256 (whole 4, fraction = RAM $5A at that moment),
+is at or beyond the object's x. (This is a screen test: object x ≤ camera x, i.e. rx ≤ 0, the object has reached or passed the screen's left edge while still invisible, so it appears right at the left edge, `objects.md` 3.7 rule 9.) Then: horizontal speed = 4 + R / 256 (whole 4, fraction = RAM $5A at that moment),
 flags X = 0 (right), frame = type + $56 (so types 59-5D become the frames $AF-$B3 of types 54-58), work 6 = $80, and
 **the step ends there: it does not move on its start step** (like $B4, unlike $B5); from the next step it homes like $B4
 (accel 8, M = 4, both axes). Its vertical speed and flags Y are not touched (zero from its making). (Types 59-5D occur 4, 2, 4, 1 and 2 times.)

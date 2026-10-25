@@ -405,6 +405,27 @@ every block shows exactly its chunk's palette; the remake can colour per chunk. 
 
   [C]
 
+### 5.2a Beyond the map's left and right edges, and header byte 8 (analyst, 2026-10-25) **[V]**
+
+- **Byte 8 is odd on every one of the 42 levels** (values 7, 31, 23, 39, 29, 47, 35, 29, 37, 33, 39, 45, 31, 1, 1, 5, 5, 5, 3, 7, 5,
+  5, 5, 9, 9, 5, 55, 7, 5, then 5 on levels 29-41; the width is a whole number of 256-px pages, `levels.md` 4.2). So the camera's x
+  limit 256 × (byte 8 >> 1) is exactly map width − 256: **in the original the screen never extends past the map's right edge, nor
+  past the left edge (camera x ≥ 0)**, and the horizontal question does not arise. (The vertical analogue does arise: with
+  an even byte 9, levels 3, 5, 11 and 13, the camera's lower limit shows the extra chunk row of 4.2.) A byte 8 that was even
+  would give a limit 128 px short of the true width plus 256, i.e. the screen would end 128 px past the edge; no level has it.
+- **What the original's own drawing puts there** if the camera is forced past an edge (the full-screen draw at level start redirected to a
+  chosen camera, level 0 whose limit is 768, Mesen, name table dumped 40 frames later), for a wide view that wants to know:
+  - **Right of the map (camera 896: 128 px beyond):** the draw reads the map as one row-major list of chunks, so the columns past the last
+    chunk column show **the next chunk row's first chunks**: tile (tx, ty) for tx ≥ W×16 is tile (tx − 16 W, ty + 16), and the attribute
+    (palette) cells come from the same chunks (384 of 384 tile cells and 96 of 96 attribute cells matched). For the last chunk row that
+    next row is the extra row of 4.2. This is a **wrap into the next map row**, not sky and not tile 0.
+  - **Left of the map (camera −128, high byte $FF):** the chunk index is computed from the unsigned page, so the columns left of x = 0 show
+    tiles of chunk bytes from far outside the map (terrain-looking fragments unrelated to the level): **garbage**, not the previous
+    row's last chunks.
+  - Collision (6.4, "Beyond the map") is separate: the pod cannot get there.
+  - **Remake:** for a view wider than the map's edges use empty sky (tile 0, palette 0) on both sides; no original behaviour exists
+    to copy, and the two behaviours above are artefacts of an unchecked index.
+
 ### 5.3 Drawing while scrolling
 
 The original keeps the playfield in one 32 × 30-tile nametable used as a ring: map tile column `tx` is kept in

@@ -356,6 +356,50 @@ Rebuilding makes every placed object present again, so the game keeps a small me
 - So destroyed placed objects stay away when the player goes from a planet to its second level and back, but come
   back after visiting another planet. The blocks are set to $FF at power-on / new game.
 
+### 3.7 Screen-relative rules: index for a view wider than 256 px **[C]**, mostly **[V]** (analyst audit, 2026-10-25)
+
+Every rule of the original that measures an object or position against the screen's horizontal extent, with rx = x − camera x
+(signed 16-bit, `levels.md` 5.1) and the screen being rx = 0 ... 255. A remake with a wider view must widen the rules marked
+"widen"; the others are tied to the world or to a fixed picture and stay. The audit covered every instruction in the program
+that reads the camera's x bytes (RAM $4C/$4D; found by scanning all eight banks for every addressing form, including the
+parts Ghidra's listing leaves undecoded, then reading each hit): there are no others. In particular **nothing in the program tests
+an object's horizontal place against the screen except the rules below**: no behaviour acts, fires or turns only while on screen
+(behaviours depend on being alive, which is the window of 3.5, and on the pod), no aiming or homing clamps to the screen (all
+of it is pod-relative), no sound request is gated on visibility, no collision test is skipped for being off-screen (they run
+for every live slot), and shots, particles, explosions and sparks have no screen test of their own: they are freed by 3.5 like any
+object (slots 1-30), so widening 3.5 widens them. Warp levels add no horizontal screen test (their arena is world-fixed,
+`levels.md` 6.7).
+
+| # | Rule | Where | Bounds (rx) | Status | Remake |
+|---|---|---|---|---|---|
+| 1 | Items activation window | `levels.md` 3.3 | -48 <= rx < 304 (also ry) | confirmed [C] (numbers re-read) | widen |
+| 2 | Placed-object in-range window (spawn margin M = header byte 10) | 3.4 | -M <= rx < 256 + M (also ry) | confirmed [C]/[V] | widen |
+| 3 | Placement scan's "not on screen" test: an in-range object is not spawned while 0 <= rx < 256 and 0 <= ry < 224, nor while -16 <= ry < 0 (every rx); not applied in the scan at level start | 3.4 | 0 <= rx < 256 | confirmed [V] | widen the 256 |
+| 4 | Despawn: kept window, W = max(M, 32) | 3.5 | -W <= rx < 256 + W | confirmed [C] | widen |
+| 5 | Drawn test (object level) | 3.5 | -32 <= rx < 288 | confirmed [C] | widen |
+| 6 | **Per-sprite cut** of a drawn object: a sprite is written only if its screen x (rx + dx, + 1 for layouts with count above 0, 6.2) is 0 ... 255 as a 16-bit value (high byte zero), likewise y; skipped sprites take no OAM entry (6.6a). The pod (slot 0) has no object-level test at all, only this one. | 3.5, 6.2, 6.6a | 0 <= sprite x <= 255 | **new to this list** (already in 3.5 and 6.6a) [C], pod drawer [C] | widen (sprites within the wide view are drawn) |
+| 7 | Edge spawn of generators, mines and the green orb (just outside the screen) | `behaviour.md` 2.10 | left x = camera x - 32 (rx = -32), right x = camera x + 288 (rx = 288 = screen width + 32) | confirmed; fallbacks completed [C] | place at the wide view's edges -/+ 32; map-edge tests on the spawn x itself |
+| 8 | Level 26 pod limits | `player.md` 9.1 | 24 <= rx <= 232 (x - 24 - camera x clamped to 0 ... 208) | confirmed [V] | widen if the wide view should let the pod roam; the original lets it use 24..232 of 0..255 |
+| 9 | Level 26 type 59-5D ($B6) activation: waits until camera x >= object x (16-bit), i.e. rx <= 0, then becomes visible at that spot and flies right | `behaviour.md` 4.16 | rx <= 0 | **new** [V] | the object is invisible while waiting and appears at the screen's left edge; with a wide view test against the view's left edge (rx <= -(extra width on the left)) so it does not appear inside the view |
+| 10 | Level 26 prelude of $B4/$B5/$B6 by the camera's x page P (RAM $4D): P = $16-$17 speeds up, P >= $18 frees | `behaviour.md` 4.16 | camera x 5632-6143 / >= 6144 | **new to this list**; a camera position, not an edge | unchanged (world-fixed) |
+| 11 | Camera follow band: right when the player's rx >= 144, left when rx < 112; only counts when rx is 0-255 | `levels.md` 5.2 | 112, 144, 0-255 | confirmed [C] | stays at 256 by design (view centred on the original camera) |
+| 12 | Camera placement at the start of play: camera x = player x - 128 (clamped to 0 ... map width - 256) | `levels.md` 5.2 | 128 = half of 256 | confirmed [C] | stays (same reason) |
+| 13 | Parallax stars: x byte wraps at 256 in screen space, spawn x values 0, 84, 199, 135, 33; while fading a star dies when its new x < 8 | `graphics.md` 5.7.3 | 0-255, 8 | confirmed [V] | widen the wrap/spawn range; the "x < 8" death is the left column mask |
+| 14 | Delivery to the mothership (transition 1): the held item is moved to camera x + 130, y + 36 (kinds other than 3, 4, 6, 9) or the container's three objects to camera x + 131 / y + 18 (kind 9, `scenes.md` 10) so that the message screen draws it at screen x 130 / 131 | `scenes.md` 10, message screens | rx = 130/131 | **new** [C] | a fixed picture position of the 256 px message screen: keep it relative to the original 256 view (centre + 2) |
+| 15 | Backdrop interlude (`scenes.md` 11.1): camera x is 0 (screen = world); pod x clamped to 16 ... 240 (at 240 or more it becomes 240, speed 0); the object x lists use 3 ... 250; objects freed by the margin rule with M = 128 | `scenes.md` 11.1.2, 11.1.3 | 16 <= x <= 240 | **new to this list** [V] | scene-level, in 256 px coordinates; keep (or widen the walls and lists together) |
+| 16 | Background streaming: the map column that enters is camera x + 256 (right) or camera x + 8 (left, rounded to 8), rows likewise; the leftmost 8 px column is masked | `levels.md` 5.3, 5.1 | 256, 8 | confirmed [C] | rendering only |
+
+Notes:
+
+- **Rule 6 and the sprite budget.** The original also limits OAM to 64 entries and applies the left-column mask (`graphics.md` 1.3);
+  those are hardware limits (`docs/deviations.md`), not screen rules.
+- **Rule 5 against rule 6.** Rule 5 decides whether an object's sprites are built at all; rule 6 then decides per sprite. With a wide view
+  both bounds move together with the view's edges; rules 4, 3, 2 and 1 keep their relation to each other (kept >= in range >= drawn).
+- **Rule 7 detail** is in `behaviour.md` 2.10.
+- **What does not scale:** distances between objects and the pod (the 256-px "far" thresholds of `behaviour.md` 2.4/Q19, the
+  tractor beam's rope), the camera's follow rules, level 26's route, and every world-fixed trigger. They are not screen
+  rules.
+
 ## 4. Object types
 
 ### 4.1 Per-type tables (bank 4)
