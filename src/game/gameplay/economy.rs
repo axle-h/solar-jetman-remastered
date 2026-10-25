@@ -195,6 +195,7 @@ impl Gameplay {
             arrival: None,
             saved_fuel_count: self.saved_fuel_count,
             final_entry: false,
+            view_width: self.view_width,
         }
     }
 
@@ -591,10 +592,12 @@ impl Gameplay {
                 }
             }
             super::final_level::FINAL_LEVEL => {
+                let view = self.viewport(level);
                 let mut env = super::objects::Env {
                     data: &world.objects,
                     level,
                     camera: self.camera.position,
+                    view,
                     pod: &mut self.pod,
                     rng: &mut self.rng,
                     counter: self.counter,
@@ -851,8 +854,8 @@ impl Gameplay {
                 // placement scan starts over from the new camera (measured: its cursor too).
                 self.objects.cursor = 0;
                 self.objects
-                    .start_scan(&world.objects, level, self.camera.position);
-                self.objects.item_scan(&world.objects, self.camera.position);
+                    .start_scan(&world.objects, level, self.viewport(level));
+                self.objects.item_scan(&world.objects, self.viewport(level));
                 Outcome::Playing
             }
             Transition::Dock => self.dock(),
@@ -945,7 +948,7 @@ impl Gameplay {
         self.camera = Camera::at_start(level, self.pod.body.x, self.pod.body.y);
         self.objects.item_cursor = 0;
         self.objects.cursor = 0;
-        self.objects.item_scan(&world.objects, self.camera.position);
+        self.objects.item_scan(&world.objects, self.viewport(level));
         self.counter &= !0xFFFF;
         self.job = 8;
         self.terrain

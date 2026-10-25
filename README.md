@@ -50,7 +50,7 @@ Every control can be rebound in the port menu (Controls, then Keyboard or Gamepa
 ## Port menu (F1)
 
 - **Physics:** Remastered (the default) runs the physics at the display's rate, up to 200 Hz, so the pod answers within a frame rather than a 30 Hz step and moves smoothly, and lets an upright pod rest on flat ground instead of hopping. Original is the original's 30 Hz step exactly.
-- **Video:** vsync, window scale, fullscreen, and Overscan, which crops the edges a television hides.
+- **Video:** vsync, window scale, fullscreen, Overscan, which crops the edges a television hides, and Aspect: Original (256 pixels across, as on the console) or Native, which widens the view to the screen's shape and shows more of the world, nothing stretched.
 - **Sound:** volume and mute.
 - **Controls:** remappable keyboard and gamepad.
 - **Cheats:** infinite lives, infinite fuel (hits and crashes still push and spark but take no fuel), a full weapon gauge, and a level select.

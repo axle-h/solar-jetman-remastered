@@ -9,7 +9,6 @@ use crate::game::gameplay::behave::{SPARK_FRAMES, TURRET_SHOTS};
 pub(super) use crate::game::gameplay::behave::{
     max_speed, slow_and_turn, slow_and_turn_overshoot, slow_down,
 };
-use crate::game::level::Point;
 use crate::game::sound::{Channel, Request};
 use std::ops::RangeInclusive;
 
@@ -669,23 +668,30 @@ impl ObjectTable {
     }
 }
 
-/// A random position just outside the screen near the pod's row or column (behaviour.md 2.10).
+/// A random position just outside the screen near the pod's row or column (behaviour.md 2.10;
+/// the side edges are the view's, `docs/widescreen.md`).
 pub(super) fn edge_position(env: &Env) -> (u16, u16) {
-    let Point { x: cx, y: cy } = env.camera;
+    let cy = env.camera.y;
+    let view_left = env.view.left_x();
+    let view_right = view_left + env.view.w() + 32;
     let (r1, r2) = (env.rng.high, env.rng.low);
     let level = env.level;
     let map_width = u32::from(level.width) * 128;
     let map_height = level.map_rows() as u32 * 128;
     let pod = &env.pod.body;
-    if r2 & 2 != 0 {
-        // A side edge.
-        let mut left = r2 & 4 != 0;
-        if left && cx < 32 {
-            left = false;
-        } else if !left && u32::from(cx) + 288 >= map_width {
-            left = true;
-        }
-        let x = if left { cx.wrapping_sub(32) } else { cx + 288 };
+    // A side edge, the other side if the first is off the map; neither: top or bottom.
+    let (left_fits, right_fits) = (view_left >= 32, view_right < map_width as i32);
+    let side = match r2 & 4 != 0 {
+        true if left_fits => Some(view_left - 32),
+        false if right_fits => Some(view_right),
+        true if right_fits => Some(view_right),
+        false if left_fits => Some(view_left - 32),
+        _ => None,
+    };
+    if r2 & 2 != 0
+        && let Some(x) = side
+    {
+        let x = x as u16;
         let r = i16::from(r1 % 128);
         let offset = r - 64 + i16::from(r >= 64);
         (x, pod.y.saturating_add_signed(offset))

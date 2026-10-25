@@ -22,6 +22,9 @@ pub struct Settings {
     /// Hide the picture's edges: the 8 lines at the top and bottom that a television's
     /// overscan hides, and the 8-pixel column at the left that the game blanks.
     pub crop_overscan: bool,
+    /// The view takes the display's shape, wider than the original's (`docs/widescreen.md`);
+    /// off, the original's 256 pixels.
+    pub native_aspect: bool,
     pub volume: u8,
     pub mute: bool,
     /// The cheats, all off by default.
@@ -42,6 +45,7 @@ impl Default for Settings {
             scale: 3,
             fullscreen: false,
             crop_overscan: true,
+            native_aspect: false,
             volume: MAX_VOLUME,
             mute: false,
             cheats: Cheats::default(),
@@ -97,6 +101,11 @@ impl Settings {
                 "crop_overscan" => {
                     settings.crop_overscan = flag(&value).unwrap_or(settings.crop_overscan);
                 }
+                "aspect" => match value.as_str() {
+                    "native" => settings.native_aspect = true,
+                    "original" => settings.native_aspect = false,
+                    _ => {}
+                },
                 "mute" => settings.mute = flag(&value).unwrap_or(settings.mute),
                 "physics" => match value.as_str() {
                     "remastered" => settings.remastered = true,
@@ -139,7 +148,7 @@ impl Settings {
         let on = |b: bool| if b { "on" } else { "off" };
         let mut text = format!(
             "[game]\nphysics = {}\n\n\
-             [video]\nvsync = {}\nscale = {}\nfullscreen = {}\ncrop_overscan = {}\n\n\
+             [video]\nvsync = {}\nscale = {}\nfullscreen = {}\ncrop_overscan = {}\naspect = {}\n\n\
              [sound]\nvolume = {}\nmute = {}\n\n[cheats]\ninfinite_lives = {}\n\
              infinite_fuel = {}\nfull_gauge = {}\n\n\
              [saves]\nslot = {}\n",
@@ -152,6 +161,11 @@ impl Settings {
             self.scale,
             on(self.fullscreen),
             on(self.crop_overscan),
+            if self.native_aspect {
+                "native"
+            } else {
+                "original"
+            },
             self.volume,
             on(self.mute),
             on(self.cheats.infinite_lives),
@@ -194,6 +208,7 @@ mod tests {
             scale: 5,
             fullscreen: true,
             crop_overscan: false,
+            native_aspect: true,
             volume: 4,
             mute: true,
             cheats: Cheats {

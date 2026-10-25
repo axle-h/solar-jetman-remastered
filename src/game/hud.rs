@@ -140,9 +140,11 @@ impl Hud {
         tiles
     }
 
-    /// Draws the panel into `frame` below the playfield. The partly filled gauge cells are
-    /// made of `graphics.gauge_rows` (graphics.md 3); without them such a cell is blank.
+    /// Draws the panel into `frame` below the playfield, centred in a wide frame. The partly
+    /// filled gauge cells are made of `graphics.gauge_rows` (graphics.md 3); without them such
+    /// a cell is blank.
     pub fn draw(&self, frame: &mut Frame, graphics: &LevelGraphics) {
+        let left = frame.centre();
         let cells = self.cells();
         let fill = |value: u8| usize::from(value % CELL_UNITS / 2) & 7;
         for (row, line) in cells.iter().enumerate() {
@@ -169,7 +171,7 @@ impl Hud {
                     for (x, &value) in pixels.iter().enumerate() {
                         let screen_x = LEFT + column * 8 + x;
                         if screen_x < SCREEN_WIDTH && value != 0 {
-                            frame.pixels[line_y * SCREEN_WIDTH + screen_x] =
+                            frame.pixels[line_y * frame.width + left + screen_x] =
                                 graphics.palette.background(palette, value);
                         }
                     }
@@ -190,6 +192,7 @@ pub fn draw_weapon_icon(frame: &mut Frame, graphics: &LevelGraphics, item: u8) {
     let Some(picture) = graphics.item_pictures.get(start..start + PICTURE_BYTES) else {
         return;
     };
+    let left = frame.centre();
     for (index, bytes) in picture.as_chunks::<16>().0.iter().enumerate() {
         let pixels = crate::game::graphics::tile_pixels(bytes);
         let (row, column) = (index / 3, 28 + index % 3);
@@ -202,7 +205,7 @@ pub fn draw_weapon_icon(frame: &mut Frame, graphics: &LevelGraphics, item: u8) {
                 let screen_x = LEFT + column * 8 + x;
                 let value = pixels[y * 8 + x];
                 if screen_x < SCREEN_WIDTH && value != 0 {
-                    frame.pixels[line_y * SCREEN_WIDTH + screen_x] =
+                    frame.pixels[line_y * frame.width + left + screen_x] =
                         graphics.palette.background(0, value);
                 }
             }

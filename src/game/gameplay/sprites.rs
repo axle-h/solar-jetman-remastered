@@ -1,10 +1,9 @@
 //! The pod's sprite: layouts from the pack's `game/sprites.ron` (`docs/spec/objects.md` 6.2-6.4) drawn
 //! with the pod's tiles from the player's ROM.
 
-use crate::game::SCREEN_WIDTH;
 use crate::game::graphics::{Chr, ChrLoad, Graphics, MissingGraphics, Palette, PatternTable};
 use crate::game::hex::HexRows;
-use crate::game::playfield::{BLANK_LEFT_COLUMNS, Frame, PLAYFIELD_LINES};
+use crate::game::playfield::{Frame, PLAYFIELD_LINES, blank_left_columns};
 use serde::{Deserialize, Serialize};
 
 /// File name inside the pack's `game/` folder.
@@ -561,8 +560,8 @@ impl Sprites {
 
 /// Draws one 8 × 8 sprite tile of `table` with its top-left pixel at `(left, top)` on the
 /// playfield: `attributes` are the sprite attribute byte (palette 0-3, bit 5 behind the
-/// background, bits 6 and 7 the flips). Nothing shows in the left 8 pixels or below the
-/// playfield.
+/// background, bits 6 and 7 the flips). Nothing shows in the blanked left columns
+/// ([`blank_left_columns`]) or below the playfield.
 pub fn draw_tile(
     frame: &mut Frame,
     palette: &Palette,
@@ -572,6 +571,8 @@ pub fn draw_tile(
     (left, top): (i32, i32),
 ) {
     let behind = attributes & 0x20 != 0;
+    let width = frame.width;
+    let columns = blank_left_columns(width) as i32..width as i32;
     for row in 0..8i32 {
         let y = top + row;
         if !(0..PLAYFIELD_LINES as i32).contains(&y) {
@@ -581,7 +582,7 @@ pub fn draw_tile(
         let pixels = table.row(tile, source_row);
         for column in 0..8i32 {
             let x = left + column;
-            if !(BLANK_LEFT_COLUMNS as i32..SCREEN_WIDTH as i32).contains(&x) {
+            if !columns.contains(&x) {
                 continue;
             }
             let source_column = if attributes & 0x40 != 0 {
@@ -593,7 +594,7 @@ pub fn draw_tile(
             if value == 0 {
                 continue;
             }
-            let at_pixel = y as usize * SCREEN_WIDTH + x as usize;
+            let at_pixel = y as usize * width + x as usize;
             // Behind the background: only over the universal background colour.
             if behind && frame.pixels[at_pixel] != palette.universal_background() {
                 continue;

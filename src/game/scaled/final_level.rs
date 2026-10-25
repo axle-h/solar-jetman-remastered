@@ -45,17 +45,19 @@ impl Pod {
     }
 
     /// The screen limits of the pod's step (player.md 9.1 item 6), against the camera at the
-    /// end of the previous step. After the route's end the vertical limits push the camera.
+    /// end of the previous step, widened to the view's sides (`docs/widescreen.md`). After the
+    /// route's end the vertical limits push the camera.
     fn keep_on_screen(&mut self, end: bool) {
         let (cx, cy) = (
             i32::from(self.route_camera.x),
             i32::from(self.route_camera.y),
         );
-        let dx = i32::from(self.body.x) - LEFT - cx;
+        let (wider_left, wider_right) = self.route_margins;
+        let dx = i32::from(self.body.x) - LEFT - (cx - wider_left);
         if dx < 0 {
-            self.body.x = (cx + LEFT) as u16;
-        } else if dx >= 208 {
-            self.body.x = (cx + RIGHT) as u16;
+            self.body.x = (cx - wider_left + LEFT) as u16;
+        } else if dx >= 208 + wider_left + wider_right {
+            self.body.x = (cx + wider_right + RIGHT) as u16;
         }
         let d = i32::from(self.body.y) - TOP - cy;
         if !end {
@@ -224,7 +226,8 @@ impl ObjectTable {
                 return;
             }
             0xB6 if o.work6 & 0x80 == 0 => {
-                if env.camera.x < o.x {
+                // It waits for the screen's left edge, the view's when wider (objects.md 3.7).
+                if env.view.left_x() < i32::from(o.x) {
                     return;
                 }
                 o.speed_x = 0x0400 | u16::from(env.rng.out);

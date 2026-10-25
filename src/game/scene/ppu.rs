@@ -117,6 +117,10 @@ pub struct Screen {
     /// (`docs/deviations.md`, "Colour cells"). Empty when unused.
     #[serde(default)]
     pub cell_palettes: Vec<Option<u8>>,
+    /// Sprites shown only in a frame wider than the screen, outside its 256 columns (the
+    /// remake's, `docs/widescreen.md`): the stars either side of the title and the story.
+    #[serde(default)]
+    pub side_sprites: Vec<Sprite>,
 }
 
 /// First line of the blank gap above the status panel and the panel's first line.
@@ -155,6 +159,7 @@ impl Default for Screen {
             hide_line_from: None,
             solid_behind: false,
             cell_palettes: Vec::new(),
+            side_sprites: Vec::new(),
         }
     }
 }
@@ -329,31 +334,34 @@ impl Screen {
         }
     }
 
-    /// Draws the screen into `frame`.
+    /// Draws the screen into `frame`. A frame wider than the screen shows it in the middle,
+    /// the backdrop colour either side, and sprites anywhere across it (`docs/widescreen.md`);
+    /// the left-column mask then hides the background only, as the backdrop it shows matches
+    /// the sides.
     pub fn draw(&self, frame: &mut Frame) {
-        let mut sprite_layer = vec![0u16; SCREEN_WIDTH * SCREEN_HEIGHT];
-        for sprite in &self.sprites {
-            self.stamp(sprite, &mut sprite_layer);
+        let width = frame.width;
+        let origin = frame.centre();
+        let wide = width > SCREEN_WIDTH;
+        let backdrop = self.palette.universal_background();
+        let mut sprite_layer = vec![0u16; width * SCREEN_HEIGHT];
+        let side = self.side_sprites.iter().filter(|_| wide);
+        for sprite in self.sprites.iter().chain(side) {
+            self.stamp(sprite, &mut sprite_layer, width, origin);
         }
         // The background's colour numbers (0-3) where sprites may show, for the solid scenery.
-        let mut values = self
-            .solid_behind
-            .then(|| vec![0u8; SCREEN_WIDTH * SCREEN_HEIGHT]);
+        let mut values = self.solid_behind.then(|| vec![0u8; width * SCREEN_HEIGHT]);
         for y in 0..SCREEN_HEIGHT {
+            let line = y * width..(y + 1) * width;
             if self.hide_from.is_some_and(|line| y >= line) {
-                for x in 0..SCREEN_WIDTH {
-                    frame.pixels[y * SCREEN_WIDTH + x] = self.palette.universal_background();
-                }
-                sprite_layer[y * SCREEN_WIDTH..(y + 1) * SCREEN_WIDTH].fill(0);
+                frame.pixels[line.clone()].fill(backdrop);
+                sprite_layer[line].fill(0);
                 continue;
             }
             let (gap, first) = (PANEL_GAP - self.panel_lift, PANEL_FIRST - self.panel_lift);
             if self.panel.is_some() && (gap..first).contains(&y) {
                 // Rendering is off: only the backdrop colour shows.
-                for x in 0..SCREEN_WIDTH {
-                    frame.pixels[y * SCREEN_WIDTH + x] = self.palette.universal_background();
-                }
-                sprite_layer[y * SCREEN_WIDTH..(y + 1) * SCREEN_WIDTH].fill(0);
+                frame.pixels[line.clone()].fill(backdrop);
+                sprite_layer[line].fill(0);
                 continue;
             }
             let in_panel = self.panel.is_some() && y >= first;
@@ -378,7 +386,16 @@ impl Screen {
                 .band
                 .as_ref()
                 .filter(|b| !in_panel && (b.first_line..b.end_line).contains(&y));
-            for x in 0..SCREEN_WIDTH {
+            for frame_x in 0..width {
+                let i = y * width + frame_x;
+                let Some(x) = frame_x.checked_sub(origin).filter(|&x| x < SCREEN_WIDTH) else {
+                    // Beside the screen: the backdrop, under the sprites.
+                    frame.pixels[i] = backdrop;
+                    if in_panel {
+                        sprite_layer[i] = 0;
+                    }
+                    continue;
+                };
                 let (tile, palette, fine_x, fine_y) = if let Some(band) = band {
                     let row = tile_row.saturating_sub(band.first_row);
                     let world_x = x + band.scroll_x;
@@ -421,8 +438,7 @@ impl Screen {
                 } else {
                     value
                 };
-                frame.pixels[y * SCREEN_WIDTH + x] = self.palette.background(palette, value);
-                let i = y * SCREEN_WIDTH + x;
+                frame.pixels[i] = self.palette.background(palette, value);
                 if let Some(values) = values.as_mut() {
                     values[i] = value;
                 }
@@ -433,7 +449,7 @@ impl Screen {
             }
         }
         for (i, &sprite) in sprite_layer.iter().enumerate() {
-            let hidden = |values: &[u8]| sprite & 0x100 != 0 && enclosed(values, i);
+            let hidden = |values: &[u8]| sprite & 0x100 != 0 && enclosed(values, i, width);
             if sprite != 0 && !values.as_deref().is_some_and(hidden) {
                 frame.pixels[i] = (sprite & 0xFF) as u8;
             }
@@ -442,15 +458,15 @@ impl Screen {
             .hide_line_from
             .filter(|&(line, _)| line < SCREEN_HEIGHT)
         {
-            for x in column..SCREEN_WIDTH {
-                frame.pixels[line * SCREEN_WIDTH + x] = self.palette.universal_background();
-            }
+            frame.pixels[line * width + origin + column..(line + 1) * width].fill(backdrop);
         }
     }
 
     /// Adds the opaque pixels of a sprite that no earlier sprite has taken: colour in the low
-    /// byte, bit 8 for "behind the background", and the whole value never 0 where drawn.
-    fn stamp(&self, sprite: &Sprite, layer: &mut [u16]) {
+    /// byte, bit 8 for "behind the background", and the whole value never 0 where drawn. The
+    /// layer is `width` wide with the screen's left edge at `origin`.
+    fn stamp(&self, sprite: &Sprite, layer: &mut [u16], width: usize, origin: usize) {
+        let wide = width > SCREEN_WIDTH;
         for row in 0..8i32 {
             let y = sprite.y + row;
             if !(0..SCREEN_HEIGHT as i32).contains(&y) {
@@ -460,7 +476,10 @@ impl Screen {
             let pixels = self.sprite_tiles().row(sprite.tile, source_row);
             for column in 0..8i32 {
                 let x = sprite.x + column;
-                if !(0..SCREEN_WIDTH as i32).contains(&x) || (self.blank_left_sprites && x < 8) {
+                let frame_x = x + origin as i32;
+                if !(0..width as i32).contains(&frame_x)
+                    || (!wide && self.blank_left_sprites && x < 8)
+                {
                     continue;
                 }
                 let source = if sprite.flip_x { 7 - column } else { column };
@@ -468,7 +487,7 @@ impl Screen {
                 if value == 0 {
                     continue;
                 }
-                let cell = &mut layer[y as usize * SCREEN_WIDTH + x as usize];
+                let cell = &mut layer[y as usize * width + frame_x as usize];
                 if *cell != 0 {
                     continue;
                 }
@@ -479,6 +498,24 @@ impl Screen {
     }
 }
 
+/// Stars for the sides of a wider view (`docs/widescreen.md`): `stars` again in each 256-pixel
+/// band either side, each with its own height, tile, colour and flags but the x of another
+/// star, so that the bands do not repeat the middle.
+pub fn side_stars(stars: &[Sprite]) -> Vec<Sprite> {
+    let count = stars.len();
+    let mut sprites = Vec::new();
+    for band in [-2i32, -1, 1, 2] {
+        let partner = 17 * band.unsigned_abs() as usize + if band < 0 { 29 } else { 0 };
+        for (n, star) in stars.iter().enumerate() {
+            sprites.push(Sprite {
+                x: stars[(n + partner) % count].x + 256 * band,
+                ..*star
+            });
+        }
+    }
+    sprites
+}
+
 /// Reach of [`enclosed`]: holes in the scenery up to this many pixels across in either
 /// direction count as scenery.
 const HOLE_REACH: usize = 4;
@@ -487,19 +524,19 @@ const HOLE_REACH: usize = 4;
 /// than open sky: its outline (a coloured pixel next to it, diagonals included) or a small hole
 /// (a coloured pixel within [`HOLE_REACH`] on each of its four sides, on its own line and
 /// column).
-fn enclosed(values: &[u8], i: usize) -> bool {
+fn enclosed(values: &[u8], i: usize, width: usize) -> bool {
     if values[i] != 0 {
         return true;
     }
-    let (x, y) = (i % SCREEN_WIDTH, i / SCREEN_WIDTH);
-    let at = |x: usize, y: usize| values[y * SCREEN_WIDTH + x] != 0;
+    let (x, y) = (i % width, i / width);
+    let at = |x: usize, y: usize| values[y * width + x] != 0;
     let near = |n: usize, size: usize| n.saturating_sub(1)..=(n + 1).min(size - 1);
-    if near(y, SCREEN_HEIGHT).any(|y| near(x, SCREEN_WIDTH).any(|x| at(x, y))) {
+    if near(y, SCREEN_HEIGHT).any(|y| near(x, width).any(|x| at(x, y))) {
         return true;
     }
     let reach = 1..=HOLE_REACH;
     reach.clone().any(|d| x >= d && at(x - d, y))
-        && reach.clone().any(|d| x + d < SCREEN_WIDTH && at(x + d, y))
+        && reach.clone().any(|d| x + d < width && at(x + d, y))
         && reach.clone().any(|d| y >= d && at(x, y - d))
         && reach.clone().any(|d| y + d < SCREEN_HEIGHT && at(x, y + d))
 }
@@ -615,7 +652,7 @@ mod tests {
                     u8::from(!((28..31).contains(&x) && (28..31).contains(&y)));
             }
         }
-        let at = |x: usize, y: usize| enclosed(&values, y * SCREEN_WIDTH + x);
+        let at = |x: usize, y: usize| enclosed(&values, y * SCREEN_WIDTH + x, SCREEN_WIDTH);
         assert!(at(29, 29) && at(25, 25));
         // Just outside the edge (its outline) counts; two pixels out is sky.
         assert!(at(19, 30) && at(40, 40));
@@ -646,5 +683,28 @@ mod tests {
             row,
             [0x41, 0x5C, 0x42, 0x5E, 0x43, 0x5D, 0x3A, 0x00, 0x31, 0x00]
         );
+    }
+
+    #[test]
+    fn a_wide_frame_centres_the_screen_and_lets_sprites_out() {
+        let mut screen = screen();
+        screen.set_tile(0, 0, 1);
+        screen.blank_left_sprites = true;
+        screen.sprites = vec![Sprite::new(-20, 40, 1, 0), Sprite::new(4, 60, 1, 0)];
+        screen.side_sprites = vec![Sprite::new(300, 80, 1, 0)];
+        let mut frame = Frame::new(456);
+        screen.draw(&mut frame);
+        // The page's tile (0, 0) is at the screen's left edge, 100 pixels in; beside it the
+        // backdrop.
+        assert_eq!(frame.pixel(100, 0), 0x11);
+        assert_eq!(frame.pixel(99, 0), 0x0F);
+        // Sprites show left of the screen and in its masked column, and the side sprites too.
+        assert_eq!(frame.pixel(80, 40), 0x22);
+        assert_eq!(frame.pixel(104, 60), 0x22);
+        assert_eq!(frame.pixel(400, 80), 0x22);
+        // On the original's width the mask applies and side sprites stay out.
+        let mut frame = Frame::default();
+        screen.draw(&mut frame);
+        assert_eq!(frame.pixel(4, 60), 0x0F);
     }
 }

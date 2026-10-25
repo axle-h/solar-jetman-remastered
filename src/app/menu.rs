@@ -33,6 +33,7 @@ enum Row {
     Scale,
     Fullscreen,
     Overscan,
+    Aspect,
     Volume,
     Mute,
     Keyboard,
@@ -99,6 +100,7 @@ impl Page {
                 Row::Scale,
                 Row::Fullscreen,
                 Row::Overscan,
+                Row::Aspect,
                 Row::Back,
             ],
             Page::Sound => &[Row::Volume, Row::Mute, Row::Back],
@@ -303,6 +305,7 @@ impl Menu {
                     Row::Vsync => settings.vsync = !settings.vsync,
                     Row::Fullscreen => settings.fullscreen = !settings.fullscreen,
                     Row::Overscan => settings.crop_overscan = !settings.crop_overscan,
+                    Row::Aspect => settings.native_aspect = !settings.native_aspect,
                     Row::Mute => settings.mute = !settings.mute,
                     Row::Scale => {
                         let n = i32::try_from(MAX_SCALE).unwrap_or(0) + 1;
@@ -415,6 +418,15 @@ impl Menu {
                             "CROPPED"
                         } else {
                             "FULL"
+                        }
+                        .into(),
+                    ),
+                    Row::Aspect => (
+                        "ASPECT",
+                        if settings.native_aspect {
+                            "NATIVE"
+                        } else {
+                            "ORIGINAL"
                         }
                         .into(),
                     ),

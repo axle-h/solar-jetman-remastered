@@ -314,7 +314,7 @@ struct Shell<'a> {
 
 impl Shell<'_> {
     fn message(&mut self, title: &str, body: &str) -> Result<(), String> {
-        let frame = Frame::default();
+        let frame = Frame::new(self.screen.width());
         self.screen.present(&mut self.texture, &frame, |s| {
             ui::draw_message(s, title, body)
         })
@@ -456,7 +456,7 @@ fn open_dialog(_: &sdl3::video::Window, _: &mpsc::Sender<PathBuf>) -> bool {
 }
 
 /// Writes the picture to `screenshots/` as a PNG and returns its path.
-fn save_screenshot(folder: &Folder, rgb: &[u8]) -> Result<PathBuf, String> {
+fn save_screenshot(folder: &Folder, (rgb, width): (&[u8], usize)) -> Result<PathBuf, String> {
     let seconds = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
@@ -472,7 +472,7 @@ fn save_screenshot(folder: &Folder, rgb: &[u8]) -> Result<PathBuf, String> {
     let file = std::fs::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
     let mut encoder = png::Encoder::new(
         std::io::BufWriter::new(file),
-        SCREEN_WIDTH as u32,
+        width as u32,
         SCREEN_HEIGHT as u32,
     );
     encoder.set_color(png::ColorType::Rgb);
@@ -666,6 +666,12 @@ fn run() -> Result<(), String> {
             && let Some(audio) = audio.as_mut()
         {
             audio.with_player(|p| p.resume());
+        }
+        // The view's width: the original's, or the display's shape (`docs/widescreen.md`).
+        screen.follow_display(&settings)?;
+        frame.set_width(screen.width());
+        if let Mode::Play { game, .. } = &mut mode {
+            game.set_view_width(u16::try_from(screen.width()).unwrap_or(u16::MAX));
         }
         let paused = menu.is_open();
         let mut scaled_blend = None;

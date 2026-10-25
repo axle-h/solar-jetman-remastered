@@ -13,6 +13,7 @@ use super::{Gameplay, Seed};
 use crate::game::hex::HexRows;
 use crate::game::level::tests::synthetic_world;
 use crate::game::level::{Placement, Point, World};
+use crate::game::view::Viewport;
 
 /// A world whose level 0 has a turret (type 5), a generator (type 0x49) and an egg (type 0x5F)
 /// at known places, with the real values of the tables for those states.
@@ -93,6 +94,7 @@ fn sweep_rules(
         data: &world.objects,
         level: &world.levels[0],
         camera: Point { x: 0, y: 0 },
+        view: Viewport::original(Point { x: 0, y: 0 }),
         pod,
         rng,
         counter,
@@ -119,25 +121,54 @@ fn the_start_scan_spawns_what_is_in_range_and_the_step_scan_the_rest() {
     let level = &world.levels[0];
     let mut table = table(&world);
     // Camera (0, 0), margin 64: the egg at (20, 20) is in range, the others are not.
-    table.start_scan(&world.objects, level, Point { x: 0, y: 0 });
+    table.start_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 0, y: 0 }),
+    );
     assert_eq!(table.slots[23].state, 0xB8);
     assert_eq!((table.slots[23].index, table.slots[23].kind), (2, 0x5F));
     assert_eq!(table.slots[23].hit_points, 1);
     // The step scan never spawns what is on screen; (300, 500) is 220 below the camera after
     // moving: from camera (100, 280) the turret is at (200, 220), on screen: no spawn.
-    table.step_scan(&world.objects, level, Point { x: 100, y: 280 }, false);
-    table.step_scan(&world.objects, level, Point { x: 100, y: 280 }, false);
-    table.step_scan(&world.objects, level, Point { x: 100, y: 280 }, false);
+    table.step_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 100, y: 280 }),
+        false,
+    );
+    table.step_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 100, y: 280 }),
+        false,
+    );
+    table.step_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 100, y: 280 }),
+        false,
+    );
     assert!(table.slots[24].state == 0, "{:?}", table.slots[24]);
     // From camera (100, 200) it is at (200, 300): off screen below, within the margin 64 of 256.
     // Spawned at once, in the lowest free slot of 23-30.
     table.cursor = 0;
-    table.step_scan(&world.objects, level, Point { x: 100, y: 200 }, false);
+    table.step_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 100, y: 200 }),
+        false,
+    );
     assert_eq!(table.slots[24].state, 0x8A);
     assert_eq!(table.slots[24].hit_points, 3);
     // A live object is not spawned twice.
     table.cursor = 0;
-    table.step_scan(&world.objects, level, Point { x: 100, y: 200 }, false);
+    table.step_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 100, y: 200 }),
+        false,
+    );
     assert_eq!(table.slots[25].state, 0);
 }
 
@@ -146,17 +177,57 @@ fn despawning_follows_the_window_and_respawn_brings_fresh_values() {
     let world = world();
     let level = &world.levels[0];
     let mut table = table(&world);
-    table.start_scan(&world.objects, level, Point { x: 0, y: 0 });
+    table.start_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 0, y: 0 }),
+    );
     table.slots[23].hit_points = 7;
     // Margin 64: kept while -64 <= rx < 320 (frame not $FF).
-    table.despawn(level, Point { x: 0, y: 0 });
+    table.despawn(level, Viewport::original(Point { x: 0, y: 0 }));
     assert_ne!(table.slots[23].state, 0);
-    table.despawn(level, Point { x: 100, y: 0 });
+    table.despawn(level, Viewport::original(Point { x: 100, y: 0 }));
     // rx = 20 - 100 = -80 < -64: freed.
     assert_eq!(table.slots[23].state, 0);
     // It spawns again from the list with fresh values once in range.
-    table.start_scan(&world.objects, level, Point { x: 0, y: 0 });
+    table.start_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 0, y: 0 }),
+    );
     assert_eq!(table.slots[23].hit_points, 1);
+}
+
+#[test]
+fn a_wider_view_widens_the_windows() {
+    // docs/widescreen.md: the windows run from the view's left edge to its width.
+    let world = world();
+    let level = &world.levels[0];
+    let mut table = table(&world);
+    table.create(&world.objects, 24, 0x8A, 0x24, 400, 100);
+    let wide = Viewport {
+        left: 0,
+        top: 0,
+        width: 456,
+    };
+    // Margin 64: rx 400 is kept within 456 + 64, freed beyond the original's 256 + 64.
+    table.despawn(level, wide);
+    assert_ne!(table.slots[24].state, 0);
+    table.despawn(level, Viewport::original(Point { x: 0, y: 0 }));
+    assert_eq!(table.slots[24].state, 0);
+    // Drawn within 32 px of the view's sides.
+    let object = crate::game::gameplay::objects::Object {
+        state: 0x8A,
+        frame: 0x24,
+        x: 470,
+        y: 100,
+        ..Default::default()
+    };
+    assert!(ObjectTable::is_drawn(&object, wide));
+    assert!(!ObjectTable::is_drawn(
+        &object,
+        Viewport::original(Point { x: 0, y: 0 })
+    ));
 }
 
 #[test]
@@ -219,7 +290,11 @@ fn the_egg_hatches_nothing_and_goes_after_64_steps() {
     let world = world();
     let level = &world.levels[0];
     let mut table = table(&world);
-    table.start_scan(&world.objects, level, Point { x: 0, y: 0 });
+    table.start_scan(
+        &world.objects,
+        level,
+        Viewport::original(Point { x: 0, y: 0 }),
+    );
     let pod = pod_at(&world, 10, 10);
     let mut rng = Rng::default();
     for step in 1..=63u32 {
@@ -375,7 +450,7 @@ fn items_spawn_one_per_call_and_wrap_with_the_cursor() {
     ];
     let level = &world.levels[0];
     let mut table = ObjectTable::new(&world.objects, level);
-    let camera = Point { x: 0, y: 0 };
+    let camera = Viewport::original(Point { x: 0, y: 0 });
     table.item_scan(&world.objects, camera);
     assert_eq!(table.slots[11].state, state::MOTHERSHIP);
     assert_eq!(table.slots[11].frame, 0x8C);
@@ -823,6 +898,7 @@ fn a_patrolling_creature_turns_back_where_the_route_says_only_in_the_remake() {
             data: &world.objects,
             level: &level,
             camera: Point { x: 0, y: 0 },
+            view: Viewport::original(Point { x: 0, y: 0 }),
             pod: &mut pod,
             rng: &mut rng,
             counter: 0,
@@ -1204,6 +1280,9 @@ fn an_edge_position_carries_into_the_high_byte_only_in_the_remake() {
     // Q10: bit 1 of R2 set (a side edge), bit 2 clear (the right one); R1 = 100 gives an
     // offset of 100 - 64 + 1 = 37 on the pod's y.
     let world = world();
+    // A map wide enough for the right edge (1024 px).
+    let mut level = world.levels[0].clone();
+    (level.width, level.height) = (8, 8);
     let mut rng = Rng {
         high: 100,
         low: 0b010,
@@ -1214,8 +1293,9 @@ fn an_edge_position_carries_into_the_high_byte_only_in_the_remake() {
         let mut score = Score(0);
         let env = Env {
             data: &world.objects,
-            level: &world.levels[0],
+            level: &level,
             camera: Point { x: 0, y: 0 },
+            view: Viewport::original(Point { x: 0, y: 0 }),
             pod: &mut pod,
             rng: &mut rng,
             counter: 0,
@@ -1229,6 +1309,49 @@ fn an_edge_position_carries_into_the_high_byte_only_in_the_remake() {
         // 0x01F0 + 37 = 0x0215; the original loses the carry and lands at 0x0115.
         assert_eq!(y, if original { 0x0115 } else { 0x0215 }, "{original}");
     }
+}
+
+#[test]
+fn edge_positions_follow_the_view_and_fall_back() {
+    // behaviour.md 2.10 and objects.md 3.7 rule 7: the view's left edge - 32 or right edge
+    // + 32, the other side when the first is off the map, the top or bottom when both are.
+    let world = world();
+    let edge = |width: u8, left: i16, low: u8| {
+        let mut level = world.levels[0].clone();
+        (level.width, level.height) = (width, 8);
+        let mut pod = pod_at(&world, 100, 300);
+        let mut rng = Rng {
+            low,
+            ..Rng::default()
+        };
+        let mut score = Score(0);
+        let env = Env {
+            data: &world.objects,
+            level: &level,
+            camera: Point { x: 400, y: 200 },
+            view: Viewport {
+                left: left as u16,
+                top: 200,
+                width: 456,
+            },
+            pod: &mut pod,
+            rng: &mut rng,
+            counter: 0,
+            score: &mut score,
+            original_rules: false,
+            bonus_tag: 0,
+            beam_spin: None,
+            beam_slot: 0,
+        };
+        super::behave::edge_position(&env)
+    };
+    // Width 8 half-chunks: a map 1024 px wide.
+    assert_eq!(edge(8, 300, 0b110).0, 268);
+    assert_eq!(edge(8, 300, 0b010).0, 300 + 456 + 32);
+    assert_eq!(edge(8, 10, 0b110).0, 10 + 456 + 32);
+    assert_eq!(edge(8, 600, 0b010).0, 568);
+    // Width 2: 256 px, narrower than the view; neither side fits, so the top edge.
+    assert_eq!(edge(2, -100, 0b110).1, 200 - 48);
 }
 
 #[test]

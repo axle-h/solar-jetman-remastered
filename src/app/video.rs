@@ -9,14 +9,22 @@ use crate::settings::Settings;
 use sdl3::event::Event;
 use sdl3::gamepad::Gamepad;
 use sdl3::pixels::{Color, PixelFormat};
+use sdl3::rect::Rect;
 use sdl3::render::{FRect, ScaleMode, Texture, TextureCreator, WindowCanvas};
 use sdl3::video::WindowContext;
 use sdl3::{EventPump, GamepadSubsystem, Sdl};
 use solar_jetman::game::gameplay::input::Buttons;
 use solar_jetman::game::playfield::Frame;
+use solar_jetman::game::view::{MAX_WIDTH, width_for};
 use solar_jetman::game::viewer::ViewerInput;
 use solar_jetman::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use std::path::PathBuf;
+
+/// The size of the primary display's desktop mode, before there is a window.
+fn desktop_size(video: &sdl3::VideoSubsystem) -> Option<(u32, u32)> {
+    let mode = video.get_primary_display().ok()?.get_mode().ok()?;
+    Some((u32::try_from(mode.w).ok()?, u32::try_from(mode.h).ok()?))
+}
 
 fn sdl_error(error: impl std::fmt::Display) -> String {
     format!("SDL: {error}")
@@ -27,20 +35,37 @@ pub struct Screen {
     sdl: Sdl,
     canvas: WindowCanvas,
     rgb: [[u8; 3]; 64],
+    /// The last presented picture as packed RGB, `width` pixels wide.
     pixels: Vec<u8>,
-    /// The part of the picture shown: left, top, width, height.
-    visible: (u32, u32, u32, u32),
+    /// The frame's width: the original's 256, or wider (`docs/widescreen.md`).
+    width: usize,
+    /// The overscan's edges are hidden (`Settings::crop_overscan`).
+    crop: bool,
 }
 
-/// The part of the picture shown: all of it, or without the edges a television's overscan
-/// hides (8 lines at the top and bottom) and the 8-pixel column at the left that the game
-/// blanks (`Settings::crop_overscan`).
-fn visible_area(settings: &Settings) -> (u32, u32, u32, u32) {
-    let (width, height) = (SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32);
-    if settings.crop_overscan {
-        (8, 8, width - 8, height - 16)
+/// The part of a picture `width` wide that is shown, as left, top, width, height: all of it,
+/// or without the edges a television's overscan hides (8 lines at the top and bottom) and, on
+/// the original's width, the 8-pixel column at the left that the game blanks
+/// (`Settings::crop_overscan`; a wider view draws that column).
+fn visible_area(crop: bool, width: usize) -> (u32, u32, u32, u32) {
+    let (width, height) = (width as u32, SCREEN_HEIGHT as u32);
+    let left = if width == SCREEN_WIDTH as u32 { 8 } else { 0 };
+    if crop {
+        (left, 8, width - left, height - 16)
     } else {
         (0, 0, width, height)
+    }
+}
+
+/// The frame's width for `settings` on a display `display` pixels across and high: 256 for
+/// the original's aspect, else the display's shape at the lines shown (`docs/widescreen.md`).
+fn frame_width(settings: &Settings, display: Option<(u32, u32)>) -> usize {
+    match display {
+        Some((w, h)) if settings.native_aspect && w > 0 && h > 0 => {
+            let lines = visible_area(settings.crop_overscan, SCREEN_WIDTH).3;
+            usize::from(width_for(f64::from(w) / f64::from(h), lines))
+        }
+        _ => SCREEN_WIDTH,
     }
 }
 
@@ -52,7 +77,8 @@ impl Screen {
         // the renderer is created.
         sdl3::hint::set("SDL_RENDER_VSYNC", if settings.vsync { "1" } else { "0" });
         let scale = settings.scale.max(3);
-        let visible = visible_area(settings);
+        let width = frame_width(settings, desktop_size(&video));
+        let visible = visible_area(settings.crop_overscan, width);
         let window = video
             .window(
                 "Solar Jetman remastered",
@@ -68,8 +94,9 @@ impl Screen {
             sdl,
             canvas,
             rgb: solar_jetman::game::ntsc::master_palette(),
-            pixels: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
-            visible,
+            pixels: vec![0; width * SCREEN_HEIGHT * 3],
+            width,
+            crop: settings.crop_overscan,
         };
         screen.apply(settings, None)?;
         Ok(screen)
@@ -91,31 +118,57 @@ impl Screen {
                 .set_fullscreen(settings.fullscreen)
                 .map_err(sdl_error)?;
         }
-        self.visible = visible_area(settings);
+        let width_before = self.width;
+        self.crop = settings.crop_overscan;
+        self.width = frame_width(settings, self.display_size());
         if !settings.fullscreen
             && settings.scale > 0
-            && before.is_none_or(|b| {
-                b.scale != settings.scale
-                    || b.fullscreen
-                    || b.crop_overscan != settings.crop_overscan
-            })
+            && (self.width != width_before
+                || before.is_none_or(|b| {
+                    b.scale != settings.scale
+                        || b.fullscreen
+                        || b.crop_overscan != settings.crop_overscan
+                }))
         {
             let scale = settings.scale;
+            let visible = visible_area(self.crop, self.width);
             self.canvas
                 .window_mut()
-                .set_size(self.visible.2 * scale, self.visible.3 * scale)
+                .set_size(visible.2 * scale, visible.3 * scale)
                 .map_err(sdl_error)?;
         }
         Ok(())
+    }
+
+    /// The frame's width now: [`Screen::apply`] sets it, and [`Screen::follow_display`]
+    /// follows the window to another display.
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    /// Takes the shape of the display the window is on now, for the native aspect; returns
+    /// whether the frame's width changed.
+    pub fn follow_display(&mut self, settings: &Settings) -> Result<bool, String> {
+        if !settings.native_aspect || frame_width(settings, self.display_size()) == self.width {
+            return Ok(false);
+        }
+        self.apply(settings, Some(settings))?;
+        Ok(true)
+    }
+
+    /// The size of the desktop mode of the display the window is on.
+    fn display_size(&self) -> Option<(u32, u32)> {
+        let mode = self.canvas.window().get_display().ok()?.get_mode().ok()?;
+        Some((u32::try_from(mode.w).ok()?, u32::try_from(mode.h).ok()?))
     }
 
     pub fn window(&self) -> &sdl3::video::Window {
         self.canvas.window()
     }
 
-    /// The last presented picture as packed RGB, [`SCREEN_WIDTH`] by [`SCREEN_HEIGHT`].
-    pub fn picture(&self) -> &[u8] {
-        &self.pixels
+    /// The last presented picture as packed RGB, and its width ([`SCREEN_HEIGHT`] lines).
+    pub fn picture(&self) -> (&[u8], usize) {
+        (&self.pixels, self.pixels.len() / 3 / SCREEN_HEIGHT)
     }
 
     /// The SDL context, for other subsystems (audio).
@@ -140,6 +193,8 @@ impl Screen {
         frame: &Frame,
         overlay: impl FnOnce(&mut Surface),
     ) -> Result<(), String> {
+        let width = frame.width;
+        self.pixels.resize(frame.pixels.len() * 3, 0);
         for (rgb, &colour) in self
             .pixels
             .as_chunks_mut::<3>()
@@ -151,18 +206,20 @@ impl Screen {
         }
         overlay(&mut Surface {
             pixels: &mut self.pixels,
-            width: SCREEN_WIDTH,
+            width,
             height: SCREEN_HEIGHT,
         });
+        // The texture is the widest frame's size; this frame fills its left part.
+        let area = Rect::new(0, 0, width as u32, SCREEN_HEIGHT as u32);
         texture
-            .update(None, &self.pixels, SCREEN_WIDTH * 3)
+            .update(area, &self.pixels, width * 3)
             .map_err(sdl_error)?;
-        let (width, height) = self.canvas.output_size().map_err(sdl_error)?;
-        let (left, top, shown_w, shown_h) = self.visible;
-        let scale = (width / shown_w).min(height / shown_h).max(1);
+        let (out_w, out_h) = self.canvas.output_size().map_err(sdl_error)?;
+        let (left, top, shown_w, shown_h) = visible_area(self.crop, width);
+        let scale = (out_w / shown_w).min(out_h / shown_h).max(1);
         let (w, h) = (shown_w * scale, shown_h * scale);
-        let x = (width.saturating_sub(w) / 2) as f32;
-        let y = (height.saturating_sub(h) / 2) as f32;
+        let x = (out_w.saturating_sub(w) / 2) as f32;
+        let y = (out_h.saturating_sub(h) / 2) as f32;
         self.canvas.set_draw_color(Color::RGB(0, 0, 0));
         self.canvas.clear();
         let source = FRect::new(left as f32, top as f32, shown_w as f32, shown_h as f32);
@@ -174,12 +231,12 @@ impl Screen {
     }
 }
 
-/// A streaming texture the size of the screen, sampled without smoothing.
+/// A streaming texture the size of the widest frame, sampled without smoothing.
 pub fn frame_texture(creator: &TextureCreator<WindowContext>) -> Result<Texture<'_>, String> {
     let mut texture = creator
         .create_texture_streaming(
             PixelFormat::RGB24,
-            SCREEN_WIDTH as u32,
+            u32::from(MAX_WIDTH),
             SCREEN_HEIGHT as u32,
         )
         .map_err(sdl_error)?;

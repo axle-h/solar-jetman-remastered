@@ -577,6 +577,10 @@ pub struct Game {
     /// program always turns on; the tools leave it off). Not part of a saved state.
     #[serde(skip)]
     skip_scenes: bool,
+    /// The view's width for gameplay (`docs/widescreen.md`), chosen by the program (not part
+    /// of a saved state).
+    #[serde(skip, default = "crate::game::view::original_width")]
+    view_width: u16,
 }
 
 impl Game {
@@ -631,6 +635,7 @@ impl Game {
             scaled,
             pod_rest: false,
             skip_scenes: false,
+            view_width: crate::game::view::ORIGINAL_WIDTH,
         };
         match start {
             Start::Cold => game.scene = game.licence(assets)?,
@@ -1209,6 +1214,8 @@ impl Game {
         let graphics = LevelGraphics::new(&assets.graphics, &assets.world.levels[level])?;
         let mut sprites = sprites;
         sprites.original_rules = self.original_rules;
+        let mut seed = seed;
+        seed.view_width = self.view_width;
         let engine = if self.scaled {
             Engine::Scaled(Box::new(Scaled::new(&assets.world, level, seed)))
         } else {
@@ -1560,8 +1567,16 @@ impl Game {
         self.sync_cheats();
     }
 
+    /// Chooses the view's width for gameplay (`docs/widescreen.md`): 256, the original's, by
+    /// default. The gameplay under way follows it at once.
+    pub fn set_view_width(&mut self, width: u16) {
+        self.view_width = crate::game::view::clamp_width(width);
+        self.sync_cheats();
+    }
+
     fn sync_cheats(&mut self) {
         if let Scene::Play(play) = &mut self.scene {
+            either_mut!(play, game => game.set_view_width(self.view_width));
             match &mut play.engine {
                 Engine::Original(game) => {
                     let cheats = if game.is_demo() || self.demo.is_some() {
@@ -1636,6 +1651,7 @@ impl Game {
         loaded.scaled = self.scaled;
         loaded.pod_rest = self.pod_rest;
         loaded.skip_scenes = self.skip_scenes;
+        loaded.view_width = self.view_width;
         loaded.original_rules = self.original_rules;
         *self = loaded;
         self.set_original_rules(self.original_rules);
@@ -2076,7 +2092,7 @@ impl Game {
                             &letters,
                             tile,
                             gameover::PALETTE,
-                            (x, y + 1),
+                            (x + frame.centre() as i32, y + 1),
                         );
                     }
                 }
@@ -2108,7 +2124,7 @@ impl Game {
                             .unwrap_or_else(|| scene.play.sprites.pattern_table()),
                         tile,
                         attributes,
-                        (x, y),
+                        (x + frame.centre() as i32, y),
                     );
                 }
             }

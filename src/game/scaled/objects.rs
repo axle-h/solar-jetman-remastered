@@ -8,6 +8,7 @@ use super::pod::Pod;
 use super::rng::Rng;
 use crate::game::level::{Level, Placement, Point};
 use crate::game::sound::{Channel, Request};
+use crate::game::view::Viewport;
 
 pub(super) use crate::game::gameplay::objects::NOSE;
 pub use crate::game::gameplay::objects::{
@@ -22,6 +23,9 @@ pub struct Env<'a> {
     pub data: &'a ObjectData,
     pub level: &'a Level,
     pub camera: Point,
+    /// The view around the camera (`docs/widescreen.md`), for the rules that measure against
+    /// the screen's sides.
+    pub view: Viewport,
     pub pod: &'a mut Pod,
     pub rng: &'a mut Rng,
     /// The frame counter RAM $5D during the pass (behaviour.md 1, "F").
@@ -126,11 +130,11 @@ impl ObjectTable {
         &data.placements[usize::from(level.number)]
     }
 
-    /// Whether list entry `index` is in range of the camera (3.4).
-    fn in_range(place: &Placement, camera: Point, margin: i32) -> bool {
-        let rx = i32::from(relative(place.x, camera.x));
-        let ry = i32::from(relative(place.y, camera.y));
-        (-margin..256 + margin).contains(&rx) && (-margin..256 + margin).contains(&ry)
+    /// Whether list entry `index` is in range of the view (3.4; wider with the view,
+    /// `docs/widescreen.md`).
+    fn in_range(place: &Placement, view: Viewport, margin: i32) -> bool {
+        let (rx, ry) = (view.rx(place.x), view.ry(place.y));
+        (-margin..view.w() + margin).contains(&rx) && (-margin..256 + margin).contains(&ry)
     }
 
     /// Spawns list entry `index` in the lowest free slot of 23-30, unless it is live already
@@ -161,11 +165,11 @@ impl ObjectTable {
 
     /// The scan at the start of a level: every object in range and present is spawned, with
     /// the visibility test off (3.4).
-    pub fn start_scan(&mut self, data: &ObjectData, level: &Level, camera: Point) {
+    pub fn start_scan(&mut self, data: &ObjectData, level: &Level, view: Viewport) {
         let margin = i32::from(level.object_margin);
         for index in 0..self.present.len() {
             let place = Self::placements(data, level)[index];
-            if self.present[index] != 0 && Self::in_range(&place, camera, margin) {
+            if self.present[index] != 0 && Self::in_range(&place, view, margin) {
                 self.spawn(data, level, index);
             }
         }
@@ -175,7 +179,7 @@ impl ObjectTable {
     /// on warp levels. Returns the thrust's carry-in byte RAM $0D as the scan leaves it: cleared
     /// at the start, then the `dy` byte of the last entry it examines when that is a group member;
     /// `None` when the scan does not run.
-    pub fn step_scan(&mut self, data: &ObjectData, level: &Level, camera: Point) -> Option<u8> {
+    pub fn step_scan(&mut self, data: &ObjectData, level: &Level, view: Viewport) -> Option<u8> {
         if level.is_warp_level() || self.present.is_empty() {
             return None;
         }
@@ -193,13 +197,12 @@ impl ObjectTable {
                 .flatten()
                 .unwrap_or(0);
             let place = Self::placements(data, level)[index];
-            let rx = i32::from(relative(place.x, camera.x));
-            let ry = i32::from(relative(place.y, camera.y));
-            let on_screen = (0..256).contains(&rx) && (0..224).contains(&ry);
+            let (rx, ry) = (view.rx(place.x), view.ry(place.y));
+            let on_screen = (0..view.w()).contains(&rx) && (0..224).contains(&ry);
             // objects.md 3.4: a band of 16 px above the screen, for every column, waits.
             let above = (-16..0).contains(&ry);
             let wanted = self.present[index] != 0
-                && Self::in_range(&place, camera, margin)
+                && Self::in_range(&place, view, margin)
                 && !on_screen
                 && !above;
             self.cursor += 1;
@@ -217,9 +220,9 @@ impl ObjectTable {
 
     // ---- Despawning (objects.md 3.5) ---------------------------------------------------------
 
-    /// Frees every object in slots 1-30 that left the activity window, using the camera as it
-    /// is after the B pass's move.
-    pub fn despawn(&mut self, level: &Level, camera: Point) {
+    /// Frees every object in slots 1-30 that left the activity window, using the view as it
+    /// is after the B pass's camera move.
+    pub fn despawn(&mut self, level: &Level, view: Viewport) {
         let margin = i32::from(level.object_margin);
         let wide = margin.max(32);
         for slot in 1..SLOTS {
@@ -228,14 +231,13 @@ impl ObjectTable {
             if object.state == 0 || object.state == state::COUNTDOWN {
                 continue;
             }
-            let rx = i32::from(relative(object.x, camera.x));
-            let ry = i32::from(relative(object.y, camera.y));
-            let kept_x = (-wide..256 + wide).contains(&rx);
+            let (rx, ry) = (view.rx(object.x), view.ry(object.y));
+            let kept_x = (-wide..view.w() + wide).contains(&rx);
             let kept = if object.frame == INVISIBLE {
                 // Invisible objects: y from -M to 256 + M (objects.md 3.5; a generator at ry
                 // -224 was kept with M = 224, one at -227 freed).
                 kept_x && (-margin..256 + margin).contains(&ry)
-            } else if (-32..288).contains(&rx) {
+            } else if (-32..view.w() + 32).contains(&rx) {
                 kept_x && (-wide..256 + margin).contains(&ry)
             } else {
                 kept_x && (-margin..256 + margin).contains(&ry)
@@ -246,13 +248,12 @@ impl ObjectTable {
         }
     }
 
-    /// Whether an object is drawn (3.5): frame not $FF and within 32 px of the screen.
-    pub fn is_drawn(object: &Object, camera: Point) -> bool {
-        let rx = i32::from(relative(object.x, camera.x));
-        let ry = i32::from(relative(object.y, camera.y));
+    /// Whether an object is drawn (3.5): frame not $FF and within 32 px of the view.
+    pub fn is_drawn(object: &Object, view: Viewport) -> bool {
+        let (rx, ry) = (view.rx(object.x), view.ry(object.y));
         object.state != 0
             && object.frame != INVISIBLE
-            && (-32..288).contains(&rx)
+            && (-32..view.w() + 32).contains(&rx)
             && (-32..256).contains(&ry)
     }
 
@@ -476,8 +477,8 @@ impl ObjectTable {
 
     /// One call of the items scan (levels.md 3.3): up to 4 entries from the cursor, ending at
     /// the first in range or when the cursor passes the last entry (wrapping to 0). In range
-    /// is −48 ≤ rx, ry < 304.
-    pub fn item_scan(&mut self, data: &ObjectData, camera: Point) {
+    /// is −48 ≤ rx, ry < 304, with rx from the view's left and up to its width + 48.
+    pub fn item_scan(&mut self, data: &ObjectData, view: Viewport) {
         let count = self.items.len();
         for _ in 0..4 {
             if count == 0 {
@@ -485,9 +486,9 @@ impl ObjectTable {
             }
             let index = self.item_cursor % count;
             let entry = self.items[index];
-            let rx = i32::from(relative(entry.x, camera.x));
-            let ry = i32::from(relative(entry.y, camera.y));
-            let in_range = entry.kind != 0 && (-48..304).contains(&rx) && (-48..304).contains(&ry);
+            let (rx, ry) = (view.rx(entry.x), view.ry(entry.y));
+            let in_range =
+                entry.kind != 0 && (-48..view.w() + 48).contains(&rx) && (-48..304).contains(&ry);
             let live = in_range
                 && ITEM_SLOTS
                     .into_iter()

@@ -198,7 +198,7 @@ fn every_level_has_its_graphics() {
             world,
             level,
             &level_graphics,
-            level.clamp_camera(level.camera_start),
+            solar_jetman::game::view::Viewport::original(level.clamp_camera(level.camera_start)),
         );
         assert!(frame.pixels.iter().all(|&c| c < 0x40));
     }

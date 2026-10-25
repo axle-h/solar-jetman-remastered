@@ -15,6 +15,7 @@ pub mod scaled;
 pub mod scene;
 pub mod sound;
 pub mod state;
+pub mod view;
 pub mod viewer;
 
 /// The NES's frame rate, which the game's logic tick follows.

@@ -173,6 +173,7 @@ impl Story {
                 sprite
             })
             .collect();
+        screen.side_sprites = super::ppu::side_stars(&screen.sprites);
         let mut story = Story {
             screen,
             counter: FIRST_C,

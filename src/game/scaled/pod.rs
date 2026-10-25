@@ -247,6 +247,10 @@ pub struct Pod {
     /// generator are (`Scaled::pass`).
     /// The camera of the last step on the final level, which limits the pod's flight.
     pub route_camera: crate::game::level::Point,
+    /// How far the view reaches left and right beyond that camera's screen
+    /// (`docs/widescreen.md`): the pod may fly there too. Set by the program, not saved.
+    #[serde(skip)]
+    pub route_margins: (i32, i32),
     /// The route has ended (the camera sways); the camera's vertical move RAM, which the pod's
     /// step clears and the screen limits may set (player.md 9.1, "After the route's end").
     pub route_end: bool,
@@ -369,6 +373,7 @@ impl Pod {
             width: 6,
             half_height: 6,
             route_camera: crate::game::level::Point::default(),
+            route_margins: (0, 0),
             route_end: false,
             route_my: 0,
             h_byte: 0,

@@ -10,7 +10,7 @@ use solar_jetman::game::scene::{Game, SoundRequest, Start};
 use std::fs;
 use std::path::PathBuf;
 
-const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng OUT:HIGH:LOW] [--job N]|--launch LEVEL:COUNTER|--approach LEVEL|--surface LEVEL[:dock][:owned][:flag][:clear]|--shop LEVEL:SCORE:COUNTER:MAPPING|--equip LEVEL:OWNEDMASK(hex, bit = item):COUNTER|--map LEVEL:MAPPING:SUPER[:SCORE:LIVES:EQUIPMENT:WEAPON:DEVICE]|--interlude LEVEL:POD_Y:COUNTER:JOB|--badge LEVEL:GEMS:COUNTER|--lastpassword LEVEL|--message LEVEL:KIND:TEXT:ITEM[:CARGO[:COUNTER]] --offset N] [--compare DIR] [--original|--remake] --frames F,F,... [--input FRAME:BUTTONS,...] [--out DIR] [ROM]
+const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng OUT:HIGH:LOW] [--job N]|--launch LEVEL:COUNTER|--approach LEVEL|--surface LEVEL[:dock][:owned][:flag][:clear]|--shop LEVEL:SCORE:COUNTER:MAPPING|--equip LEVEL:OWNEDMASK(hex, bit = item):COUNTER|--map LEVEL:MAPPING:SUPER[:SCORE:LIVES:EQUIPMENT:WEAPON:DEVICE]|--interlude LEVEL:POD_Y:COUNTER:JOB|--badge LEVEL:GEMS:COUNTER|--lastpassword LEVEL|--message LEVEL:KIND:TEXT:ITEM[:CARGO[:COUNTER]] --offset N] [--compare DIR] [--original|--remake] [--aspect W:H] --frames F,F,... [--input FRAME:BUTTONS,...] [--out DIR] [ROM]
   Frames count as in the capture script: the original's frame numbers from power-on (--cold,
   the default) or from the title's first frame, which the capture script shows as frame 533
   (--warm). --launch starts in the launch scene of a level with the frame counter at COUNTER;
@@ -18,7 +18,8 @@ const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng
   the remake does not have (game-flow.md 1.1). --offset N says the scene's initial picture is the original's frame N + 1. BUTTONS joined by +: start select a b up down left right, held for the 2 frames
   FRAME and FRAME + 1 like the script does. --compare DIR compares each frame with the original's
   screenshot DIR/shot-FRAME.png (tools/mesen/title-capture.lua) and prints how many pixels differ. Writes scene-FRAME.png and scene-FRAME.idx (one NES colour
-  number per pixel) in DIR (default vendor/compare/scene).";
+  number per pixel) in DIR (default vendor/compare/scene). --aspect W:H draws a wider view
+  (docs/widescreen.md).";
 
 /// Pass number `p` runs in the original's frame `p + offset`; the state after it is shown one
 /// frame later.
@@ -42,6 +43,7 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
     let mut compare: Option<PathBuf> = None;
     // The original's rules (docs/deviations.md "Validation mode"): the default with --compare.
     let mut original: Option<bool> = None;
+    let mut width = solar_jetman::game::view::ORIGINAL_WIDTH;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -277,6 +279,7 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
                     inputs.push((frame, mask));
                 }
             }
+            "--aspect" => width = crate::data_cmd::aspect_width(args.next())?,
             "--out" => out = PathBuf::from(args.next().ok_or("--out needs a folder")?),
             "--help" | "-h" => {
                 println!("{USAGE}");
@@ -302,6 +305,10 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
     if original {
         game.set_validation_input(solar_jetman::rom::extract::validation_input(&rom).ok());
     }
+    if compare.is_some() && width != solar_jetman::game::view::ORIGINAL_WIDTH {
+        return Err("--compare needs the original's width: leave out --aspect".to_owned());
+    }
+    game.set_view_width(width);
     if let Some(rng) = rng {
         game.set_random(rng);
     }
@@ -367,7 +374,7 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
         }
     };
     let mut passes = 0i64;
-    let mut frame = Frame::default();
+    let mut frame = Frame::new(usize::from(width));
     let mut shots: Vec<(i64, Vec<u8>)> = Vec::new();
     for &shown in &frames {
         // The state shown at `shown` is the one left by the pass of frame `shown - 1` (or the
@@ -386,7 +393,7 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
         }
         game.draw(&mut frame, &assets, 1.0);
         let base = out.join(format!("scene-{shown}"));
-        write_png(&base.with_extension("png"), &frame, &rgb)?;
+        crate::data_cmd::write_png(&base.with_extension("png"), &frame, &rgb)?;
         let indices: Vec<u8> = frame.pixels.iter().map(|&c| c & 0x3F).collect();
         fs::write(base.with_extension("idx"), indices)
             .map_err(|error| format!("{}: {error}", base.display()))?;
@@ -414,27 +421,6 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
         compare_sound(&dir, &sound_log, frame_of(1), frame_of(passes))?;
     }
     Ok(())
-}
-
-fn write_png(path: &std::path::Path, frame: &Frame, rgb: &[[u8; 3]; 64]) -> Result<(), String> {
-    let pixels: Vec<u8> = frame
-        .pixels
-        .iter()
-        .flat_map(|&colour| rgb[usize::from(colour & 0x3F)])
-        .collect();
-    let file = fs::File::create(path).map_err(|error| format!("{}: {error}", path.display()))?;
-    let mut encoder = png::Encoder::new(
-        std::io::BufWriter::new(file),
-        SCREEN_WIDTH as u32,
-        SCREEN_HEIGHT as u32,
-    );
-    encoder.set_color(png::ColorType::Rgb);
-    encoder.set_depth(png::BitDepth::Eight);
-    let mut writer = encoder.write_header().map_err(|e| e.to_string())?;
-    writer
-        .write_image_data(&pixels)
-        .map_err(|e| e.to_string())?;
-    writer.finish().map_err(|e| e.to_string())
 }
 
 /// One screenshot of the original: 256 × 240 RGB pixels.

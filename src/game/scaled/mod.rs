@@ -52,6 +52,7 @@ use crate::game::graphics::LevelGraphics;
 use crate::game::level::{Point, World};
 use crate::game::playfield::Frame;
 use crate::game::sound::{Channel, Request};
+use crate::game::view::Viewport;
 use camera::Camera;
 use economy::Transition;
 use input::Buttons;
@@ -140,6 +141,9 @@ pub struct Scaled {
     /// The port menu's cheats, set by the program (not part of a saved state).
     #[serde(skip)]
     cheats: Cheats,
+    /// The view's width (`docs/widescreen.md`), set by the program (not part of a saved state).
+    #[serde(skip, default = "crate::game::view::original_width")]
+    view_width: u16,
     /// Paused: Start was seen in an A pass (game-flow.md 4); `pause_frame` runs the frames until
     /// the next Start.
     paused: bool,
@@ -329,12 +333,14 @@ impl Scaled {
         {
             entry.kind = count;
         }
-        objects.start_scan(&world.objects, info, camera.position);
+        let view_width = crate::game::view::clamp_width(seed.view_width);
+        let start_view = Viewport::around(info, camera.position, view_width);
+        objects.start_scan(&world.objects, info, start_view);
         // One call of the items scan is part of the level start: the first item is in its slot
         // before the first step (levels.md 3.3; measured). Not on a warp level, where the first
         // crystal comes with the first step.
         if !info.is_warp_level() {
-            objects.item_scan(&world.objects, camera.position);
+            objects.item_scan(&world.objects, start_view);
         }
         let view = View {
             camera: (f32::from(camera.position.x), f32::from(camera.position.y)),
@@ -382,6 +388,7 @@ impl Scaled {
                 ..Tow::default()
             },
             cheats: Cheats::default(),
+            view_width,
             paused: false,
             sfx: Vec::new(),
             pause_held: Buttons::default(),
@@ -783,6 +790,7 @@ impl Scaled {
             moment,
         };
         self.pod.route_camera = self.camera_at_time(tick.end.saturating_sub(clock::STEP));
+        self.pod.route_margins = self.route_margins(level);
         self.pod.tick(&ctx, &input, &mut self.tow);
         self.collect_sound();
         self.count_spin(self.tow.held_angle(moment));
@@ -1008,6 +1016,24 @@ impl Scaled {
         self.pod.rest_below = below;
     }
 
+    /// Sets the view's width (`docs/widescreen.md`; the original's 256 by default; replays
+    /// and comparisons never change it). The rules that measure against the screen follow it.
+    pub fn set_view_width(&mut self, width: u16) {
+        self.view_width = crate::game::view::clamp_width(width);
+    }
+
+    /// How far the view reaches beyond the camera's screen, left and right.
+    fn route_margins(&self, level: &crate::game::level::Level) -> (i32, i32) {
+        let view = self.viewport(level);
+        let left = view.shift(self.camera.position);
+        (left, view.w() - 256 - left)
+    }
+
+    /// The view around the camera, for the rules that measure against the screen.
+    fn viewport(&self, level: &crate::game::level::Level) -> Viewport {
+        Viewport::around(level, self.camera.position, self.view_width)
+    }
+
     /// Sets the cheats (all off by default; replays and comparisons never set them).
     pub fn set_cheats(&mut self, cheats: Cheats) {
         self.cheats = cheats;
@@ -1082,6 +1108,7 @@ impl Scaled {
                 }
             }
             self.pod.route_camera = self.camera.position;
+            self.pod.route_margins = self.route_margins(level);
             self.pod.route_end = self.route.done;
             self.pod.route_my = self.route.my;
             self.pod.step(&ctx, held, &mut self.tow);
@@ -1116,10 +1143,12 @@ impl Scaled {
             // Slot 2's behaviour, the second of the sweep (slot 1, the flame, does nothing).
             self.place_beam();
             // Every object runs its behaviour (behaviour.md 1).
+            let view = self.viewport(level);
             let mut env = Env {
                 data,
                 level,
                 camera: self.camera.position,
+                view,
                 pod: &mut self.pod,
                 rng: &mut self.rng,
                 counter: self.counter,
@@ -1156,7 +1185,7 @@ impl Scaled {
             // B pass step 2: objects that left the window are freed (not in the gate state:
             // its particles fly out of the window and stay, player.md 9.2.3).
             if self.pod.state != pod::STATE_GATE {
-                self.objects.despawn(level, self.camera.position);
+                self.objects.despawn(level, self.viewport(level));
             }
         }
         // The status-bar split: the generator steps, then the frame counter (game-flow.md 5).
@@ -1189,10 +1218,12 @@ impl Scaled {
             // and the collision checks (behaviour.md 3).
             let data = &world.objects;
             let pod_state = self.pod.state;
+            let view = self.viewport(level);
             let mut env = Env {
                 data,
                 level,
                 camera: self.camera.position,
+                view,
                 pod: &mut self.pod,
                 rng: &mut self.rng,
                 counter: self.counter,
@@ -1209,7 +1240,7 @@ impl Scaled {
             }
             if pod_state != 9 {
                 self.objects.spawn_orb(&mut env, self.counter);
-                self.objects.item_scan(data, self.camera.position);
+                self.objects.item_scan(data, view);
             }
             // Item 9: the transition guard counts down.
             self.guard = self.guard.saturating_sub(1);
@@ -1235,7 +1266,7 @@ impl Scaled {
         } else if self.pod.state != 9 {
             // B pass step 5: the placement scan.
             self.objects
-                .step_scan(&world.objects, level, self.camera.position);
+                .step_scan(&world.objects, level, self.viewport(level));
         }
     }
 
@@ -1314,10 +1345,12 @@ impl Scaled {
         let sprites =
             crate::game::picture::dress_sprites(sprites, jetman, self.beam_image(graphics), sign);
         // Slot 1 is in front of slot 30: draw from the back.
+        let level = &world.levels[self.level];
+        let logic_view = self.viewport(level);
         let mut drawn = Vec::new();
         for slot in (1..objects::SLOTS).rev() {
             let object = &self.objects.slots[slot];
-            if !ObjectTable::is_drawn(object, self.camera.position) {
+            if !ObjectTable::is_drawn(object, logic_view) {
                 continue;
             }
             let mut object = *object;
@@ -1358,6 +1391,7 @@ impl Scaled {
             graphics,
             sprites: &sprites,
             camera,
+            view: Viewport::around(level, camera, frame.width as u16),
             objects: drawn,
             behind: self.pod.bay,
             stars: &self.star_sprites,

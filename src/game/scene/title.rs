@@ -73,6 +73,9 @@ const STARS: [(u8, u8, u8); 56] = [
     (92, 176, 0),
 ];
 
+/// A sprite line below the screen, for side stars that are not shown.
+const SCREEN_OFF: i32 = 0x100;
+
 /// Sprite-memory y at and above which the slide hides a star (2.1).
 const HIDE_FROM: u8 = 0x90;
 const HIDDEN: u8 = 0xF8;
@@ -452,6 +455,38 @@ impl Title {
         }
         sprites.extend(flame);
         self.screen.sprites = sprites;
+        self.screen.side_sprites = self.side_stars();
+    }
+
+    /// The stars again either side of a wider view (`docs/widescreen.md`).
+    fn side_stars(&self) -> Vec<Sprite> {
+        if self.substate == SUBSTATE_BADGE {
+            return Vec::new();
+        }
+        let stars: Vec<Sprite> = self
+            .stars
+            .iter()
+            .enumerate()
+            .map(|(n, star)| {
+                let mut sprite = Sprite::new(
+                    i32::from(star.x),
+                    i32::from(star.y) + 1,
+                    0x80 + star.shape,
+                    if self.flashing == Some(n) {
+                        3
+                    } else {
+                        Self::sprite_attributes(star)
+                    },
+                );
+                sprite.behind = star.behind;
+                // A removed or hidden star stays out of view with its partners.
+                if star.removed || star.y >= 0xEF {
+                    sprite.y = SCREEN_OFF;
+                }
+                sprite
+            })
+            .collect();
+        super::ppu::side_stars(&stars)
     }
 
     /// The menu's Jetman (2.3): a 2 × 2 group along the bottom, 1 pixel every 4 passes, in the

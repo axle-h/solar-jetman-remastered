@@ -6,6 +6,7 @@
 use crate::game::graphics::LevelGraphics;
 use crate::game::level::{Level, Point, World};
 use crate::game::playfield::{Frame, draw_playfield};
+use crate::game::view::Viewport;
 
 /// Camera speed of the viewer in pixels per tick.
 pub const SCROLL_SPEED: i32 = 4;
@@ -85,15 +86,11 @@ impl LevelViewer {
         }
     }
 
-    /// Draws the viewer's level at `blend` between the last two ticks.
+    /// Draws the viewer's level at `blend` between the last two ticks, as wide as `frame`.
     pub fn draw(&self, frame: &mut Frame, world: &World, graphics: &LevelGraphics, blend: f32) {
-        draw_playfield(
-            frame,
-            world,
-            self.info(world),
-            graphics,
-            self.camera_at(blend),
-        );
+        let level = self.info(world);
+        let view = Viewport::around(level, self.camera_at(blend), frame.width as u16);
+        draw_playfield(frame, world, level, graphics, view);
     }
 }
 
