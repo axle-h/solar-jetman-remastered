@@ -8,6 +8,7 @@
 
 use super::ppu::{Screen, Sprite};
 use super::{Clock, FONT_LOADS, Select, SoundRequest};
+use crate::game::SCREEN_WIDTH;
 use crate::game::gameplay::input::Buttons;
 use crate::game::gameplay::sprites::COMMON_SPRITES;
 use crate::game::graphics::{Graphics, MissingGraphics};
@@ -72,9 +73,6 @@ const STARS: [(u8, u8, u8); 56] = [
     (12, 162, 0),
     (92, 176, 0),
 ];
-
-/// A sprite line below the screen, for side stars that are not shown.
-const SCREEN_OFF: i32 = 0x100;
 
 /// Sprite-memory y at and above which the slide hides a star (2.1).
 const HIDE_FROM: u8 = 0x90;
@@ -296,6 +294,9 @@ pub struct Title {
     figure_rising: bool,
     figure_before: i32,
     flame: Option<u8>,
+    /// The frame's width (`docs/widescreen.md`), set by the program: not saved.
+    #[serde(skip, default = "crate::game::view::original_width")]
+    view_width: u16,
     /// Preset 5 as loaded, for the sun's flicker.
     sun: (u8, u8),
     /// Colours of the fade (graphics.md 7.4).
@@ -383,6 +384,7 @@ impl Title {
             figure_rising: true,
             figure_before: 128,
             flame: None,
+            view_width: crate::game::view::ORIGINAL_WIDTH,
             sun,
             fade: graphics.title_fade.clone(),
             fade_end: graphics.title_fade_end.clone(),
@@ -479,9 +481,10 @@ impl Title {
                     },
                 );
                 sprite.behind = star.behind;
-                // A removed or hidden star stays out of view with its partners.
-                if star.removed || star.y >= 0xEF {
-                    sprite.y = SCREEN_OFF;
+                // A removed star, or one hidden for good after the slide, takes its side
+                // stars with it.
+                if star.removed || star.y == HIDDEN {
+                    sprite.y = super::ppu::OFF_SCREEN;
                 }
                 sprite
             })
@@ -497,6 +500,7 @@ impl Title {
         if s < 2 {
             return None;
         }
+        let (left, _) = self.margins();
         // Sprite-memory y of the bottom row is the height + 4; the screen line is one more.
         let bottom = self.figure.pixel() + 5;
         let feet = if self.figure_rising {
@@ -504,17 +508,17 @@ impl Title {
         } else {
             (0x0E, 0x0F)
         };
-        if s < 18 {
-            let x = 4 + (s - 2) / 4;
-            sprites.push(Sprite::new(x, bottom, feet.1, 0));
-            sprites.push(Sprite::new(x, bottom - 8, 0x0B, 0));
-            return None;
-        }
-        let x = (s - 18).div_euclid(4);
+        // Before s = 18 the group's left column is off the screen's left edge, so only the
+        // right one shows (at x 4-7), with no flame. A wider frame starts him further left, at
+        // its own edge, the same way (`docs/widescreen.md`).
+        let x = (s - 18 - 4 * left).div_euclid(4);
         sprites.push(Sprite::new(x, bottom, feet.0, 0));
         sprites.push(Sprite::new(x + 8, bottom, feet.1, 0));
         sprites.push(Sprite::new(x, bottom - 8, 0x01, 0));
         sprites.push(Sprite::new(x + 8, bottom - 8, 0x0B, 0));
+        if s < 18 {
+            return None;
+        }
         // The flame is drawn from where the Jetman was before this pass's move.
         self.flame
             .map(|d| Sprite::new(x - 1, self.figure_before + 6, 0x10 + d, 1))
@@ -524,7 +528,11 @@ impl Title {
     /// pass began) and the flame (`player.md` 4.8: d is 2 or 1 while rising by the counter's
     /// bit 1, then grows at every multiple of 8 and the flame goes at 3).
     fn walk(&mut self, counter: u32) {
+        // A wider frame starts him at its left edge, earlier by the frames he takes to cross
+        // the extra columns, and his jetpack works all the way (`docs/widescreen.md`); the high
+        // target stays where the original has it over the screen, at s - lead.
         let s = self.walked;
+        let lead = 4 * self.margins().0 as u32;
         // The counter value the figure's logic sees (fitted: s + 652 at pass s, where this pass's
         // counter is s + 654).
         let c = counter.wrapping_sub(2);
@@ -534,7 +542,8 @@ impl Title {
         self.figure_before = self.figure.pixel();
         if s >= 4 {
             self.figure_rising = !self.figure.positive;
-            self.figure.target = if (FIGURE_HIGH_FROM..=FIGURE_HIGH_TO).contains(&s) {
+            let high = FIGURE_HIGH_FROM + lead..=FIGURE_HIGH_TO + lead;
+            self.figure.target = if high.contains(&s) {
                 FIGURE_HIGH
             } else {
                 FIGURE_LOW
@@ -659,7 +668,7 @@ impl Title {
                         Select::StartGame => TitleOutcome::NewGame,
                         Select::Continue => TitleOutcome::Continue,
                     };
-                } else if since >= MENU_FRAMES {
+                } else if since >= self.menu_frames() {
                     self.start_badge(graphics, clock)?;
                 }
             }
@@ -671,6 +680,26 @@ impl Title {
         }
         self.place_sprites();
         Ok(outcome)
+    }
+
+    /// Sets the frame's width (`docs/widescreen.md`): the menu Jetman crosses all of it.
+    pub fn set_view_width(&mut self, width: u16) {
+        self.view_width = width;
+    }
+
+    /// The frame's columns either side of the 256-wide screen, left and right.
+    fn margins(&self) -> (i32, i32) {
+        let extra = i32::from(self.view_width)
+            .saturating_sub(SCREEN_WIDTH as i32)
+            .max(0);
+        (extra / 2, extra - extra / 2)
+    }
+
+    /// How long the menu lasts: the original's, and 4 frames for each column more that the
+    /// Jetman flies across a wider frame (1 pixel every 4 frames).
+    fn menu_frames(&self) -> u32 {
+        let (left, right) = self.margins();
+        MENU_FRAMES + 4 * (left + right) as u32
     }
 
     fn enter(&mut self, substate: u8, counter: u32) {

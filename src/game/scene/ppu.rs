@@ -6,6 +6,7 @@ use crate::game::graphics::{Chr, Graphics, MissingGraphics, Palette, PatternTabl
 use crate::game::playfield::Frame;
 use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 use std::cell::OnceCell;
+use std::sync::OnceLock;
 
 /// Tile columns and rows of a nametable page.
 pub const COLUMNS: usize = 32;
@@ -121,6 +122,16 @@ pub struct Screen {
     /// remake's, `docs/widescreen.md`): the stars either side of the title and the story.
     #[serde(default)]
     pub side_sprites: Vec<Sprite>,
+    /// In a wider frame, the background page goes round a loop as wide as the frame plus
+    /// [`ROAM_GAP`] instead of the screen's 256 pixels, at this x scroll (not wrapped at 256):
+    /// the story's picture drifts across the whole frame (`docs/widescreen.md`).
+    pub roam: Option<i32>,
+    /// Star tiles for the sides of a wider frame (`docs/widescreen.md`), laid out by
+    /// [`SideField::cell`]: the approach screen's star field carried on, in a pattern of our own.
+    pub side_field: Option<SideField>,
+    /// Art of the remake's own beside the screen in a wider frame, and over a few of the
+    /// picture's pixels (`docs/widescreen.md`): the launch scene's 16:9 sides. Beyond it, black.
+    pub side_art: Option<SideArt>,
 }
 
 /// First line of the blank gap above the status panel and the panel's first line.
@@ -160,6 +171,9 @@ impl Default for Screen {
             solid_behind: false,
             cell_palettes: Vec::new(),
             side_sprites: Vec::new(),
+            roam: None,
+            side_field: None,
+            side_art: None,
         }
     }
 }
@@ -317,6 +331,13 @@ impl Screen {
         self.page[row * COLUMNS + column]
     }
 
+    /// The background palette the page's attributes give (`column`, `row`).
+    pub fn palette_at(&self, column: usize, row: usize) -> u8 {
+        let attribute = self.page[ATTRIBUTE_BASE + (row / 4) * 8 + column / 4];
+        let shift = ((row / 2) & 1) * 4 + ((column / 2) & 1) * 2;
+        (attribute >> shift) & 3
+    }
+
     /// Writes text from (`column`, `row`) with the game's character codes (`text.md` 1, 2.1):
     /// a space is the blank tile, `©` and `™` are the codes $3A and $3B, and a space right after
     /// a comma or a full stop is not written, because those two glyphs carry their own space.
@@ -335,7 +356,8 @@ impl Screen {
     }
 
     /// Draws the screen into `frame`. A frame wider than the screen shows it in the middle,
-    /// the backdrop colour either side, and sprites anywhere across it (`docs/widescreen.md`);
+    /// the backdrop colour either side, and sprites anywhere across it, with the status panel
+    /// spread under a rule (`docs/widescreen.md`);
     /// the left-column mask then hides the background only, as the backdrop it shows matches
     /// the sides.
     pub fn draw(&self, frame: &mut Frame) {
@@ -359,8 +381,14 @@ impl Screen {
             }
             let (gap, first) = (PANEL_GAP - self.panel_lift, PANEL_FIRST - self.panel_lift);
             if self.panel.is_some() && (gap..first).contains(&y) {
-                // Rendering is off: only the backdrop colour shows.
-                frame.pixels[line.clone()].fill(backdrop);
+                // Rendering is off: only the backdrop colour shows, and a spread panel's rule.
+                let rule = wide && y == gap + 1;
+                let colour = if rule {
+                    crate::game::hud::RULE_COLOUR
+                } else {
+                    backdrop
+                };
+                frame.pixels[line.clone()].fill(colour);
                 sprite_layer[line].fill(0);
                 continue;
             }
@@ -386,11 +414,54 @@ impl Screen {
                 .band
                 .as_ref()
                 .filter(|b| !in_panel && (b.first_line..b.end_line).contains(&y));
+            let roam = self.roam.filter(|_| wide && !in_panel && band.is_none());
+            let art = self
+                .side_art
+                .filter(|_| wide && !in_panel && band.is_none() && roam.is_none())
+                .map(SideArt::pixels);
             for frame_x in 0..width {
                 let i = y * width + frame_x;
-                let Some(x) = frame_x.checked_sub(origin).filter(|&x| x < SCREEN_WIDTH) else {
-                    // Beside the screen: the backdrop, under the sprites.
-                    frame.pixels[i] = backdrop;
+                if let Some((palette, value)) =
+                    art.and_then(|art| art.at(frame_x as i32 - origin as i32, y))
+                {
+                    let value = if self.show_background { value } else { 0 };
+                    frame.pixels[i] = self.palette.background(palette, value);
+                    if let Some(values) = values.as_mut() {
+                        values[i] = value;
+                    }
+                    if sprite_layer[i] & 0x100 != 0 && value != 0 {
+                        sprite_layer[i] = 0;
+                    }
+                    continue;
+                }
+                let x = if in_panel {
+                    crate::game::hud::panel_screen_x(frame_x, width)
+                } else if let Some(scroll_x) = roam {
+                    // The page's own x: the loop's columns beyond the page show the backdrop.
+                    let around = (width + ROAM_GAP) as i32;
+                    let page_x = (frame_x as i32 - origin as i32 + scroll_x).rem_euclid(around);
+                    Some(page_x as usize).filter(|&x| x < SCREEN_WIDTH)
+                } else {
+                    frame_x.checked_sub(origin).filter(|&x| x < SCREEN_WIDTH)
+                };
+                let Some(x) = x else {
+                    // Beside the screen: the backdrop or a side star, under the sprites.
+                    let star = self
+                        .side_field
+                        .as_ref()
+                        .filter(|_| !in_panel && band.is_none() && roam.is_none())
+                        .and_then(|field| {
+                            let column = (frame_x as i32 - origin as i32).div_euclid(8);
+                            field.cell(column, tile_row)
+                        });
+                    frame.pixels[i] = match star {
+                        Some((tile, palette)) => {
+                            let fine_x = (frame_x as i32 - origin as i32).rem_euclid(8) as usize;
+                            let value = tiles.row(tile, fine_y as u32)[fine_x];
+                            self.palette.background(palette, value)
+                        }
+                        None => backdrop,
+                    };
                     if in_panel {
                         sprite_layer[i] = 0;
                     }
@@ -416,7 +487,8 @@ impl Screen {
                         fine_y,
                     )
                 } else {
-                    let page_x = (x + scroll.0) % SCREEN_WIDTH;
+                    let scroll_x = if roam.is_some() { 0 } else { scroll.0 };
+                    let page_x = (x + scroll_x) % SCREEN_WIDTH;
                     let (tile_column, fine_x) = (page_x / 8, page_x % 8);
                     let attribute = page[ATTRIBUTE_BASE + (tile_row / 4) * 8 + tile_column / 4];
                     let shift = ((tile_row / 2) & 1) * 4 + ((tile_column / 2) & 1) * 2;
@@ -433,7 +505,8 @@ impl Screen {
                     )
                 };
                 let value = tiles.row(tile, fine_y as u32)[fine_x];
-                let value = if (self.blank_left && x < 8) || !self.show_background {
+                let masked = self.blank_left && x < 8 && roam.is_none() && art.is_none();
+                let value = if masked || !self.show_background {
                     0
                 } else {
                     value
@@ -498,22 +571,150 @@ impl Screen {
     }
 }
 
-/// Stars for the sides of a wider view (`docs/widescreen.md`): `stars` again in each 256-pixel
-/// band either side, each with its own height, tile, colour and flags but the x of another
-/// star, so that the bands do not repeat the middle.
+/// Stars for the sides of a wider view (`docs/widescreen.md`): each of `stars` again in each
+/// 256-pixel band either side of the screen, moved by an offset of its own (fixed per band and
+/// star, wrapping round the band and round the sprite lines) so the bands share neither the
+/// middle's lines nor its columns. A star moves, flashes and hides with its original. A star
+/// at [`OFF_SCREEN`] stays off.
 pub fn side_stars(stars: &[Sprite]) -> Vec<Sprite> {
-    let count = stars.len();
     let mut sprites = Vec::new();
-    for band in [-2i32, -1, 1, 2] {
-        let partner = 17 * band.unsigned_abs() as usize + if band < 0 { 29 } else { 0 };
+    for (b, band) in [-2i32, -1, 1, 2].into_iter().enumerate() {
         for (n, star) in stars.iter().enumerate() {
+            let (dx, dy) = scatter(b * stars.len() + n);
+            let y = if star.y >= OFF_SCREEN {
+                star.y
+            } else {
+                // Screen line = sprite-memory y + 1, the y wrapping at 256.
+                (star.y - 1 + dy).rem_euclid(256) + 1
+            };
             sprites.push(Sprite {
-                x: stars[(n + partner) % count].x + 256 * band,
+                x: (star.x + dx).rem_euclid(256) + 256 * band,
+                y,
                 ..*star
             });
         }
     }
     sprites
+}
+
+/// Star tiles beside the screen (`docs/widescreen.md`): each cell of the first `rows` rows
+/// holds one of `stars` (tile and palette) with a chance of `per_mille` / 1000, chosen by a hash
+/// of the cell, and none next to a star on its left or above, so the field has no repeat and
+/// no clumps.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SideField {
+    pub stars: Vec<(u8, u8)>,
+    pub rows: usize,
+    pub per_mille: u32,
+}
+
+impl SideField {
+    /// The star of side cell (`column`, `row`), the column counted from the screen's left edge
+    /// (negative to its left, 32 on to its right).
+    pub fn cell(&self, column: i32, row: usize) -> Option<(u8, u8)> {
+        let lit = |column: i32, row: usize| {
+            let h = cell_hash(column, row);
+            (h % 1000 < self.per_mille).then_some(h)
+        };
+        if self.stars.is_empty() || row >= self.rows || (0..COLUMNS as i32).contains(&column) {
+            return None;
+        }
+        let h = lit(column, row)?;
+        if lit(column - 1, row).is_some() || (row > 0 && lit(column, row - 1).is_some()) {
+            return None;
+        }
+        Some(self.stars[(h / 1000) as usize % self.stars.len()])
+    }
+}
+
+/// An integer hash of a cell, with no pattern to the eye.
+fn cell_hash(column: i32, row: usize) -> u32 {
+    let mut h = (column as u32).wrapping_mul(0x9E37_79B9) ^ (row as u32).wrapping_mul(0x85EB_CA6B);
+    h ^= h >> 16;
+    h = h.wrapping_mul(0x7FEB_352D);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x846C_A68B);
+    h ^ h >> 16
+}
+
+/// Art of the remake's own for a wider frame (`docs/widescreen.md`), by scene. A screen keeps
+/// only which art it shows; the pixels are decoded once, from the PNG built into the program.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SideArt {
+    /// The launch scene at 16:9: the bay's machinery walls, the box, the monitor and the ball.
+    Launch,
+}
+
+/// Side art's pixels: `codes` holds, for each line, `width` pixels from screen x `-left`, each
+/// the background palette × 4 + colour value, or [`ART_NONE`] where the picture shows.
+pub struct SideArtPixels {
+    left: i32,
+    width: usize,
+    codes: Vec<u8>,
+}
+
+/// A side art pixel that leaves the picture's.
+const ART_NONE: u8 = 16;
+
+impl SideArt {
+    pub fn pixels(self) -> &'static SideArtPixels {
+        static LAUNCH: OnceLock<SideArtPixels> = OnceLock::new();
+        match self {
+            SideArt::Launch => {
+                LAUNCH.get_or_init(|| decode_art(include_bytes!("launch-sides.png"), 88))
+            }
+        }
+    }
+}
+
+impl SideArtPixels {
+    /// The palette and colour value the art draws at screen (`x`, `y`), if it draws there.
+    pub fn at(&self, x: i32, y: usize) -> Option<(u8, u8)> {
+        let column = usize::try_from(x + self.left)
+            .ok()
+            .filter(|&c| c < self.width)?;
+        let code = *self.codes.get(y * self.width + column)?;
+        (code != ART_NONE).then_some((code >> 2, code & 3))
+    }
+}
+
+/// Reads side art from an 8-bit indexed PNG that starts `left` pixels left of the screen.
+fn decode_art(png_bytes: &[u8], left: i32) -> SideArtPixels {
+    const BUILT_IN: &str = "the side art built into the program";
+    let mut decoder = png::Decoder::new(std::io::Cursor::new(png_bytes));
+    decoder.set_transformations(png::Transformations::IDENTITY);
+    let mut reader = decoder.read_info().expect(BUILT_IN);
+    let mut buffer = vec![0; reader.output_buffer_size().expect(BUILT_IN)];
+    let info = reader.next_frame(&mut buffer).expect(BUILT_IN);
+    assert_eq!(
+        (info.color_type, info.bit_depth),
+        (png::ColorType::Indexed, png::BitDepth::Eight),
+        "{BUILT_IN}"
+    );
+    let width = info.width as usize;
+    let codes = buffer
+        .chunks(info.line_size)
+        .take(info.height as usize)
+        .flat_map(|line| line[..width].iter().copied())
+        .collect();
+    SideArtPixels { left, width, codes }
+}
+
+/// The columns a roaming page's loop has beyond the frame: the story's picture (128 wide)
+/// leaves one side as it comes in at the other.
+pub const ROAM_GAP: usize = 128;
+
+/// A side star's line for a star hidden for good.
+pub const OFF_SCREEN: i32 = 0x100;
+
+/// The offset of side star `k`: two bytes of an integer hash, spread evenly and with no
+/// pattern to the eye.
+fn scatter(k: usize) -> (i32, i32) {
+    let mut h = (k as u32 ^ 0x5A5A).wrapping_mul(0x9E37_79B9);
+    h ^= h >> 15;
+    h = h.wrapping_mul(0x85EB_CA6B);
+    h ^= h >> 13;
+    ((h & 0xFF) as i32, (h >> 8 & 0xFF) as i32)
 }
 
 /// Reach of [`enclosed`]: holes in the scenery up to this many pixels across in either
@@ -683,6 +884,83 @@ mod tests {
             row,
             [0x41, 0x5C, 0x42, 0x5E, 0x43, 0x5D, 0x3A, 0x00, 0x31, 0x00]
         );
+    }
+
+    #[test]
+    fn side_stars_take_lines_and_columns_of_their_own() {
+        let stars: Vec<Sprite> = (0..56).map(|n| Sprite::new(n * 4, 10 + n, 1, 0)).collect();
+        let side = side_stars(&stars);
+        assert_eq!(side.len(), 4 * stars.len());
+        let shared = |a: &Sprite, b: &Sprite| a.y == b.y || a.x.rem_euclid(256) == b.x;
+        let same = side
+            .iter()
+            .zip(stars.iter().cycle())
+            .filter(|(a, b)| shared(a, b));
+        assert!(same.count() < 8);
+        let mut hidden = stars.clone();
+        hidden[0].y = OFF_SCREEN;
+        assert!(
+            side_stars(&hidden)
+                .iter()
+                .step_by(56)
+                .all(|s| s.y == OFF_SCREEN)
+        );
+    }
+
+    #[test]
+    fn the_side_field_is_sparse_and_beside_the_screen() {
+        let field = SideField {
+            stars: vec![(1, 0)],
+            rows: 24,
+            per_mille: 80,
+        };
+        assert!((0..32).all(|column| field.cell(column, 3).is_none()));
+        assert!((-40..0).all(|column| field.cell(column, 24).is_none()));
+        let lit = |c: i32, r: usize| field.cell(c, r).is_some();
+        let mut count = 0;
+        for row in 0..24 {
+            for column in (-40..0).chain(32..72) {
+                if lit(column, row) {
+                    count += 1;
+                    assert!(!lit(column - 1, row) && (row == 0 || !lit(column, row - 1)));
+                }
+            }
+        }
+        // 80 per mille, less the neighbours' rule, of 1920 cells.
+        assert!((90..160).contains(&count), "{count}");
+    }
+
+    #[test]
+    fn the_launch_side_art_covers_16_9_and_leaves_the_picture() {
+        let art = SideArt::Launch.pixels();
+        // Screen x -88..343 at 16:9 (427 wide shows -85..341), every side pixel drawn.
+        for y in [0, 120, 239] {
+            assert!(art.at(-88, y).is_some() && art.at(-1, y).is_some());
+            assert!(art.at(256, y).is_some() && art.at(343, y).is_some());
+            assert!(art.at(-89, y).is_none() && art.at(344, y).is_none());
+        }
+        // The picture shows through but for a few repainted pixels.
+        let repainted = (0..240)
+            .flat_map(|y| (0..256).map(move |x| (x, y)))
+            .filter(|&(x, y)| art.at(x, y).is_some())
+            .count();
+        assert!((1..400).contains(&repainted), "{repainted}");
+    }
+
+    #[test]
+    fn side_art_shows_only_in_a_wider_frame() {
+        let mut screen = screen();
+        screen.set_tile(0, 0, 1);
+        let mut plain = Frame::new(SCREEN_WIDTH);
+        screen.draw(&mut plain);
+        screen.side_art = Some(SideArt::Launch);
+        let mut original = Frame::new(SCREEN_WIDTH);
+        screen.draw(&mut original);
+        assert_eq!(original.pixels, plain.pixels);
+        let mut wide = Frame::new(427);
+        screen.draw(&mut wide);
+        let (palette, value) = SideArt::Launch.pixels().at(-85, 0).unwrap();
+        assert_eq!(wide.pixel(0, 0), screen.palette.background(palette, value));
     }
 
     #[test]

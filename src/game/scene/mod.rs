@@ -882,6 +882,7 @@ impl Game {
 
     fn open_title(&mut self, assets: &Assets) -> Result<(), MissingGraphics> {
         let mut title = Title::new(&assets.graphics, &mut self.clock)?;
+        title.set_view_width(self.view_width);
         self.sound.extend(title.take_song_request());
         self.scene = Scene::Title(Box::new(title));
         Ok(())
@@ -1567,10 +1568,13 @@ impl Game {
         self.sync_cheats();
     }
 
-    /// Chooses the view's width for gameplay (`docs/widescreen.md`): 256, the original's, by
-    /// default. The gameplay under way follows it at once.
+    /// Chooses the view's width for gameplay and the title (`docs/widescreen.md`): 256, the
+    /// original's, by default. The scene under way follows it at once.
     pub fn set_view_width(&mut self, width: u16) {
         self.view_width = crate::game::view::clamp_width(width);
+        if let Scene::Title(title) = &mut self.scene {
+            title.set_view_width(self.view_width);
+        }
         self.sync_cheats();
     }
 

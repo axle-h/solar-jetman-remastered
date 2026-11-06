@@ -79,6 +79,8 @@ impl Launch {
         screen.load_picture(picture);
         // The console masks the background in the leftmost 8 pixels here too.
         screen.blank_left = true;
+        // A wider frame shows the remake's own art either side (`docs/widescreen.md`).
+        screen.side_art = Some(super::ppu::SideArt::Launch);
         screen.blank_left_sprites = true;
         screen.palette.apply(
             graphics

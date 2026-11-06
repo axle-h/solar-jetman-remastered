@@ -16,6 +16,42 @@ use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 const FIRST_LINE: usize = 202;
 const LEFT: usize = 4;
 
+/// A wide frame spreads the panel (`docs/widescreen.md`): the labels and gauges (columns 0-15)
+/// keep their place at the frame's left, and everything from column 16 on (pods, lives, score,
+/// weapon icon) keeps its distance from the right edge. The gap between is the backdrop.
+pub const SPLIT: usize = LEFT + 16 * 8;
+/// The line between the playfield and a spread panel, in the middle of the three lines where
+/// rendering is off (graphics.md 1.1), and its colour (dark grey).
+pub const RULE_LINE: usize = 194;
+pub const RULE_COLOUR: u8 = 0x00;
+
+/// The frame column of the panel's screen column `x` in a frame `width` wide.
+pub fn panel_frame_x(x: usize, width: usize) -> usize {
+    if x < SPLIT {
+        x
+    } else {
+        x + width.saturating_sub(SCREEN_WIDTH)
+    }
+}
+
+/// The panel's screen column shown at frame column `frame_x`, if any (the inverse of
+/// [`panel_frame_x`]; none in the gap of a spread panel).
+pub fn panel_screen_x(frame_x: usize, width: usize) -> Option<usize> {
+    let gap = width.saturating_sub(SCREEN_WIDTH);
+    match frame_x {
+        x if x < SPLIT => Some(x),
+        x if x < SPLIT + gap => None,
+        x => Some(x - gap).filter(|&x| x < SCREEN_WIDTH),
+    }
+}
+
+/// Draws the rule over a spread panel on `line` (nothing at the original's width).
+pub fn draw_rule(frame: &mut Frame, line: usize) {
+    if frame.width > SCREEN_WIDTH {
+        frame.line_mut(line).fill(RULE_COLOUR);
+    }
+}
+
 const TILE_BLANK: u8 = 0x00;
 const TILE_POD_TOP: u8 = 0xF4;
 const TILE_POD_BOTTOM: u8 = 0xF5;
@@ -140,11 +176,11 @@ impl Hud {
         tiles
     }
 
-    /// Draws the panel into `frame` below the playfield, centred in a wide frame. The partly
+    /// Draws the panel into `frame` below the playfield, spread in a wide frame. The partly
     /// filled gauge cells are made of `graphics.gauge_rows` (graphics.md 3); without them such
     /// a cell is blank.
     pub fn draw(&self, frame: &mut Frame, graphics: &LevelGraphics) {
-        let left = frame.centre();
+        draw_rule(frame, RULE_LINE);
         let cells = self.cells();
         let fill = |value: u8| usize::from(value % CELL_UNITS / 2) & 7;
         for (row, line) in cells.iter().enumerate() {
@@ -171,7 +207,8 @@ impl Hud {
                     for (x, &value) in pixels.iter().enumerate() {
                         let screen_x = LEFT + column * 8 + x;
                         if screen_x < SCREEN_WIDTH && value != 0 {
-                            frame.pixels[line_y * frame.width + left + screen_x] =
+                            let x = panel_frame_x(screen_x, frame.width);
+                            frame.pixels[line_y * frame.width + x] =
                                 graphics.palette.background(palette, value);
                         }
                     }
@@ -192,7 +229,6 @@ pub fn draw_weapon_icon(frame: &mut Frame, graphics: &LevelGraphics, item: u8) {
     let Some(picture) = graphics.item_pictures.get(start..start + PICTURE_BYTES) else {
         return;
     };
-    let left = frame.centre();
     for (index, bytes) in picture.as_chunks::<16>().0.iter().enumerate() {
         let pixels = crate::game::graphics::tile_pixels(bytes);
         let (row, column) = (index / 3, 28 + index % 3);
@@ -205,8 +241,8 @@ pub fn draw_weapon_icon(frame: &mut Frame, graphics: &LevelGraphics, item: u8) {
                 let screen_x = LEFT + column * 8 + x;
                 let value = pixels[y * 8 + x];
                 if screen_x < SCREEN_WIDTH && value != 0 {
-                    frame.pixels[line_y * frame.width + left + screen_x] =
-                        graphics.palette.background(0, value);
+                    let x = panel_frame_x(screen_x, frame.width);
+                    frame.pixels[line_y * frame.width + x] = graphics.palette.background(0, value);
                 }
             }
         }
@@ -273,6 +309,17 @@ mod tests {
         assert_eq!(top, [0xE5, 0xE5, 0xE7, 0xE5, 0xE5, 0xE5]);
         let bottom: Vec<u8> = (21..27).map(|c| tile(2, c)).collect();
         assert_eq!(bottom, [0xE6, 0xE6, 0xE8, 0xE6, 0xE6, 0xE6]);
+    }
+
+    #[test]
+    fn a_wide_panel_spreads_at_column_16() {
+        assert_eq!(panel_frame_x(131, 427), 131);
+        assert_eq!(panel_frame_x(132, 427), 303);
+        for x in 0..SCREEN_WIDTH {
+            assert_eq!(panel_frame_x(x, SCREEN_WIDTH), x);
+            assert_eq!(panel_screen_x(panel_frame_x(x, 427), 427), Some(x));
+        }
+        assert_eq!(panel_screen_x(200, 427), None);
     }
 
     #[test]

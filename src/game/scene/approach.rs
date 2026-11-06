@@ -2,7 +2,7 @@
 //! the planet's globe, its gravity and diameter, the password for the state, and the status panel
 //! with the system, the lives and the score. Any button lands.
 
-use super::ppu::{Screen, Sprite};
+use super::ppu::{Screen, SideField, Sprite};
 use super::strings::{PLANETS, SYSTEMS, signed_number};
 use super::{Clock, FONT_LOADS};
 use crate::game::gameplay::input::Buttons;
@@ -59,6 +59,37 @@ pub enum ApproachOutcome {
     Land,
 }
 
+/// Rows of the star field (scenes.md 7).
+const FIELD_ROWS: usize = 24;
+
+/// The star field for the sides of a wider frame (`docs/widescreen.md`): the field's own star
+/// tiles, as the picture leaves them before any text, at the field's own density, in a pattern
+/// of our own.
+fn side_field(screen: &Screen) -> SideField {
+    let mut stars = Vec::new();
+    let mut lit = 0;
+    for row in 0..FIELD_ROWS {
+        // Column 0 is under the left-column mask.
+        for column in 1..32 {
+            let tile = screen.tile(column, row);
+            if tile != 0 {
+                lit += 1;
+                let star = (tile, screen.palette_at(column, row));
+                if !stars.contains(&star) {
+                    stars.push(star);
+                }
+            }
+        }
+    }
+    // The neighbours' rule removes some stars: ask for a little more to make up.
+    let per_mille = (lit * 1000 / (FIELD_ROWS * 31)) as u32 * 6 / 5;
+    SideField {
+        stars,
+        rows: FIELD_ROWS,
+        per_mille,
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Approach {
     screen: Screen,
@@ -85,6 +116,7 @@ impl Approach {
             .get(PICTURE)
             .ok_or_else(|| MissingGraphics(PICTURE.to_owned()))?;
         screen.load_picture(picture);
+        screen.side_field = Some(side_field(&screen));
         let preset = graphics
             .presets
             .get(PRESET)

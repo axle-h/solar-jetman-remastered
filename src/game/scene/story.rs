@@ -184,6 +184,7 @@ impl Story {
             story.write_row(0, row);
         }
         story.screen.scroll = scroll_at(FIRST_C);
+        story.screen.roam = Some(roam_at(FIRST_C));
         clock.counter = FIRST_C;
         Ok(story)
     }
@@ -258,20 +259,37 @@ impl Story {
             self.screen.refresh();
         }
         self.screen.scroll = scroll_at(c);
+        self.screen.roam = Some(roam_at(c));
         StoryOutcome::Running
     }
 }
 
 /// The scroll at clock `c` (scenes.md 3, "Scroll").
 pub fn scroll_at(c: u32) -> (usize, usize) {
-    let x = if c <= FIRST_C {
+    (x_at(c).rem_euclid(256) as usize, usize::from(y_at(c)))
+}
+
+/// The clock from which the x scroll stays still (scenes.md 3): the rocket then blows up where
+/// the picture has come to rest.
+const SCROLL_STILL: u32 = 600;
+
+/// The page's x for a wider frame, which loops round the whole frame (`docs/widescreen.md`):
+/// the x scroll, moved by whole pages so that once the scroll is still the picture rests where
+/// the original's screen shows it (x scroll in -256..0 there, so no wrap).
+fn roam_at(c: u32) -> i32 {
+    let still = x_at(SCROLL_STILL);
+    x_at(c) - still + (still.rem_euclid(256) - 256)
+}
+
+/// The x scroll at clock `c`, not wrapped at 256 (scenes.md 3).
+fn x_at(c: u32) -> i32 {
+    if c <= FIRST_C {
         0
     } else if c <= 240 {
         -2 * (c as i32 - 4)
     } else {
-        -2 * 236 - (c.min(600) as i32 - 240)
-    };
-    (x.rem_euclid(256) as usize, usize::from(y_at(c)))
+        -2 * 236 - (c.min(SCROLL_STILL) as i32 - 240)
+    }
 }
 
 /// The y scroll at clock `c` (scenes.md 3).
