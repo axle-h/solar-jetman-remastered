@@ -3,7 +3,7 @@
 //! per picture. A cell keeps its tile and palette number, so the sides take each planet's
 //! colours with the picture.
 
-use super::ppu::{COLUMNS, ROWS, SideCell, SideCells};
+use super::ppu::{COLUMNS, ROWS, SideArt, SideCell, SideCells};
 
 /// Columns either side: a 16:9 frame shows 85½ pixels beside the picture.
 pub const SIDE_COLUMNS: usize = 11;
@@ -23,9 +23,24 @@ enum Step {
         size: (u8, u8),
         mirror: bool,
     },
+    /// Every cell of `size` from `to` takes the picture's cell `from`: plain sky or ground.
+    Fill {
+        to: (i8, u8),
+        size: (u8, u8),
+        from: (u8, u8),
+    },
 }
 
-use Step::{Common, Copy};
+use Step::{Common, Copy, Fill};
+
+const fn mirror(to: (i8, u8), from: (u8, u8), size: (u8, u8)) -> Step {
+    Copy {
+        to,
+        from,
+        size,
+        mirror: true,
+    }
+}
 
 const fn copy(to: (i8, u8), from: (u8, u8), size: (u8, u8)) -> Step {
     Copy {
@@ -84,12 +99,99 @@ const ICE_FLOES: &[Step] = &[
     },
 ];
 
+/// Picture 6 (planet 1): the rock towers. Sky and black ground carry on. Above the horizon,
+/// the spire groups of the picture's left (columns 0-4, 5-9 and 10-11), mirrored or not, and
+/// stretches of plain hill, joined where their horizon lines meet; below it, the lower-left
+/// boulder, which the picture's edge cuts, mirrored about the edge.
+const ROCK_TOWERS: &[Step] = &[
+    Common {
+        columns: (-11, 11),
+        rows: (0, 30),
+    },
+    Common {
+        columns: (32, 11),
+        rows: (0, 30),
+    },
+    // Left, outwards from the picture: plain hill (its horizon at line 150, where column 0's
+    // starts), the big spire mirrored (149 to 140), the small one (138 at its left).
+    Fill {
+        to: (-4, 15),
+        size: (4, 1),
+        from: (0, 15),
+    },
+    Fill {
+        to: (-4, 16),
+        size: (4, 3),
+        from: (0, 16),
+    },
+    Fill {
+        to: (-4, 19),
+        size: (4, 1),
+        from: (31, 19),
+    },
+    mirror((-9, 15), (0, 15), (5, 5)),
+    copy((-11, 15), (10, 15), (2, 5)),
+    // Right: the hill from the tower's dark base (line 126) down (column 11, to 141), plain hill
+    // at line 142, the middle spires mirrored (141 to 142), plain hill again.
+    copy((32, 15), (11, 15), (1, 5)),
+    Fill {
+        to: (33, 15),
+        size: (2, 1),
+        from: (0, 15),
+    },
+    Fill {
+        to: (33, 16),
+        size: (2, 2),
+        from: (0, 16),
+    },
+    Fill {
+        to: (33, 18),
+        size: (2, 2),
+        from: (31, 18),
+    },
+    mirror((35, 15), (5, 15), (5, 5)),
+    Fill {
+        to: (40, 15),
+        size: (3, 1),
+        from: (0, 15),
+    },
+    Fill {
+        to: (40, 16),
+        size: (3, 2),
+        from: (0, 16),
+    },
+    Fill {
+        to: (40, 18),
+        size: (3, 2),
+        from: (31, 18),
+    },
+    // Black ground for the edge of spire 4 beside the tower's base (column 11, row 17) and for
+    // the top of the boulder with the hole (columns 7-9, row 19), wherever those were copied.
+    Common {
+        columns: (32, 1),
+        rows: (17, 1),
+    },
+    Common {
+        columns: (35, 3),
+        rows: (19, 1),
+    },
+    // Below the horizon: the end of the lower-left boulder, which the picture's edge cuts: its
+    // first column mirrored, rounded off by `SideArt::Surface6`.
+    mirror((-1, 24), (0, 24), (1, 5)),
+];
+
 /// The recipe of surface picture `picture`, if it has one yet.
 fn recipe(picture: usize) -> Option<&'static [Step]> {
     match picture {
         1 => Some(ICE_FLOES),
+        6 => Some(ROCK_TOWERS),
         _ => None,
     }
+}
+
+/// Our own touch-ups over surface picture `picture`'s side cells, if it has any.
+pub fn side_art(picture: usize) -> Option<SideArt> {
+    (picture == 6).then_some(SideArt::Surface6)
 }
 
 /// The sides of surface picture `picture`, from its nametable `page` (30 rows of 32 tiles) and
@@ -117,6 +219,16 @@ fn build(steps: &[Step], page: &[Vec<u8>], attributes: &[u8]) -> Option<SideCell
                     let common = most_common(page.get(row)?);
                     for column in columns.0..columns.0 + columns.1 as i8 {
                         sides.set(i32::from(column), row, cell(common, row, false));
+                    }
+                }
+            }
+            Fill { to, size, from } => {
+                let (column, row) = (usize::from(from.0), usize::from(from.1));
+                for dy in 0..usize::from(size.1) {
+                    let at = usize::from(to.1) + dy;
+                    debug_assert_eq!(at < LOWER_FIRST_ROW, row < LOWER_FIRST_ROW);
+                    for dx in 0..i32::from(size.0) {
+                        sides.set(i32::from(to.0) + dx, at, cell(column, row, false));
                     }
                 }
             }
@@ -203,6 +315,19 @@ mod tests {
         assert!(sides.cell(24, 15).is_none() && sides.cell(23, 20).is_none());
         assert!(sides.cell(25, 12).is_none() && sides.cell(25, 24).is_none());
         assert!(side_cells(3, &page, &attributes).is_none());
+    }
+
+    #[test]
+    fn every_side_cell_of_a_finished_picture_is_set() {
+        let page = vec![vec![0u8; 32]; 30];
+        for picture in [1, 6] {
+            let sides = side_cells(picture, &page, &[0; 64]).unwrap();
+            for row in 0..30 {
+                for column in (-11..0).chain(32..43) {
+                    assert!(sides.cell(column, row).is_some(), "picture {picture}");
+                }
+            }
+        }
     }
 
     #[test]

@@ -309,6 +309,7 @@ impl Surface {
         screen.blank_left = true;
         screen.blank_left_sprites = true;
         screen.side_cells = super::surface_sides::side_cells(picture, &page, &picture_attributes);
+        screen.side_art = super::surface_sides::side_art(picture);
         screen.refresh();
         let (tx, ty) = (i32::from(REST_X[picture]), i32::from(REST_Y[picture]));
         Ok(Surface {
@@ -948,7 +949,7 @@ impl Surface {
         // two lines below the picture (the scroll of 2 shows its row 0 again there, which a
         // television's overscan hides) are blank (`docs/deviations.md`).
         self.screen.solid_behind = !original;
-        self.screen.hide_from = (!original).then_some(SCREEN_HEIGHT - 2);
+        self.screen.repeat_from = (!original).then_some(SCREEN_HEIGHT - 2);
     }
 }
 

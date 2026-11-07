@@ -105,6 +105,10 @@ pub struct Screen {
     /// From this line on rendering is off: only the backdrop colour shows, no sprites either
     /// (the credits' split).
     pub hide_from: Option<usize>,
+    /// From this line on, each line shows the background of the line above, without sprites:
+    /// the surface picture's last line carried down over the two its scroll wraps round.
+    #[serde(default)]
+    pub repeat_from: Option<usize>,
     /// One line drawn only up to a column (the credits' split switches rendering off partway
     /// along it): (line, first hidden column).
     pub hide_line_from: Option<(usize, usize)>,
@@ -171,6 +175,7 @@ impl Default for Screen {
             panel_lift: 0,
             band: None,
             hide_from: None,
+            repeat_from: None,
             hide_line_from: None,
             solid_behind: false,
             cell_palettes: Vec::new(),
@@ -396,6 +401,16 @@ impl Screen {
             let line = y * width..(y + 1) * width;
             if self.hide_from.is_some_and(|line| y >= line) {
                 frame.pixels[line.clone()].fill(backdrop);
+                sprite_layer[line].fill(0);
+                continue;
+            }
+            if self.repeat_from.is_some_and(|from| y >= from && y > 0) {
+                frame
+                    .pixels
+                    .copy_within(line.start - width..line.start, line.start);
+                if let Some(values) = values.as_mut() {
+                    values.copy_within(line.start - width..line.start, line.start);
+                }
                 sprite_layer[line].fill(0);
                 continue;
             }
@@ -787,6 +802,9 @@ impl SideCells {
 pub enum SideArt {
     /// The launch scene at 16:9: the bay's machinery walls, the box, the monitor and the ball.
     Launch,
+    /// Surface picture 6's touch-ups over its side cells: the lower-left boulder's end, and black
+    /// rock behind the faces of the mirrored spires.
+    Surface6,
 }
 
 /// Side art's pixels: `codes` holds, for each line, `width` pixels from screen x `-left`, each
@@ -803,9 +821,13 @@ const ART_NONE: u8 = 16;
 impl SideArt {
     pub fn pixels(self) -> &'static SideArtPixels {
         static LAUNCH: OnceLock<SideArtPixels> = OnceLock::new();
+        static SURFACE_6: OnceLock<SideArtPixels> = OnceLock::new();
         match self {
             SideArt::Launch => {
                 LAUNCH.get_or_init(|| decode_art(include_bytes!("launch-sides.png"), 88))
+            }
+            SideArt::Surface6 => {
+                SURFACE_6.get_or_init(|| decode_art(include_bytes!("surface-6-sides.png"), 88))
             }
         }
     }
@@ -1092,6 +1114,23 @@ mod tests {
     }
 
     #[test]
+    fn surface_6_art_touches_only_the_boulders_end_and_the_spires_shadows() {
+        let art = SideArt::Surface6.pixels();
+        let drawn: Vec<_> = (0..240)
+            .flat_map(|y| (-88..344).map(move |x| (x, y)))
+            .filter(|&(x, y)| art.at(x, y).is_some())
+            .collect();
+        assert!(!drawn.is_empty());
+        // The boulder's end, and black rock behind the two mirrored spires' faces; never inside
+        // the screen.
+        let boulder = |x: i32, y: usize| (-8..0).contains(&x) && (190..230).contains(&y);
+        let spires = |x: i32, y: usize| {
+            ((-72..-32).contains(&x) || (280..320).contains(&x)) && (118..152).contains(&y)
+        };
+        assert!(drawn.iter().all(|&(x, y)| boulder(x, y) || spires(x, y)));
+    }
+
+    #[test]
     fn side_art_shows_only_in_a_wider_frame() {
         let mut screen = screen();
         screen.set_tile(0, 0, 1);
@@ -1155,6 +1194,21 @@ mod tests {
         assert_eq!(frame.pixel(0, 0), 0x11);
         screen.draw(&mut wide);
         assert_eq!(wide.pixel(16, 0), 0x10 + 8 + 2);
+    }
+
+    #[test]
+    fn repeated_lines_show_the_background_above_without_sprites() {
+        let mut screen = screen();
+        screen.set_tile(0, 29, 1);
+        screen.sprites = vec![Sprite::new(0, 236, 1, 0)];
+        screen.repeat_from = Some(238);
+        let mut frame = Frame::default();
+        screen.draw(&mut frame);
+        // Line 237 has the sprite over the tile; lines 238-239 the tile alone.
+        assert_eq!(frame.pixel(0, 237), 0x22);
+        assert_eq!(frame.pixel(0, 238), 0x11);
+        assert_eq!(frame.pixel(0, 239), 0x11);
+        assert_eq!(frame.pixel(8, 239), frame.pixel(8, 237));
     }
 
     #[test]
