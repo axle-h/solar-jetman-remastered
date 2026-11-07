@@ -96,6 +96,15 @@ pub fn render(repo: &Path, args: &[String]) -> Result<(), String> {
             for step in 0..steps {
                 let buttons = inputs.get(step).copied().unwrap_or_default();
                 game.step(world, buttons);
+                // A scene change ends the level's play (the scene layer would act on it), and
+                // leaves the B pass of its step unrun: stepping on would start with a B pass.
+                if let Some(transition) = game.transition() {
+                    println!(
+                        "level {number}: a scene change ({transition:?}) after step {}",
+                        step + 1
+                    );
+                    break;
+                }
             }
             game.draw(&mut frame, world, &level_graphics, &sprites, layouts, 1.0);
             camera = game.camera.position;
