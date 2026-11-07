@@ -382,7 +382,8 @@ fn ask_for_rom(
     shell: &mut Shell,
     status: &mut String,
 ) -> Result<Option<Files>, String> {
-    let (send, receive) = mpsc::channel::<PathBuf>();
+    // Each dialog sends one answer: the chosen path, or `None` when cancelled or failed.
+    let (send, receive) = mpsc::channel::<Option<PathBuf>>();
     let mut dialog_open = false;
     loop {
         let events = shell.input.poll();
@@ -394,11 +395,11 @@ fn ask_for_rom(
         if Path::new(web::IMPORT_FILE).exists() {
             chosen.push(PathBuf::from(web::IMPORT_FILE));
         }
-        while let Ok(path) = receive.try_recv() {
+        while let Ok(answer) = receive.try_recv() {
             dialog_open = false;
-            chosen.push(path);
+            chosen.extend(answer);
         }
-        if events.nav.contains(&menu::Nav::Accept) && !dialog_open {
+        if events.any_press && !dialog_open {
             dialog_open = open_dialog(shell.screen.window(), &send);
         }
         if let Some(path) = chosen.last() {
@@ -417,19 +418,17 @@ fn ask_for_rom(
             .to_owned();
         if cfg!(target_os = "android") {
             // Nothing can be dropped on an Android app.
-            text.push_str("Press A to choose the .nes file, or a .zip holding it");
+            text.push_str("Press any key or button to choose the .nes file, or a .zip holding it");
         } else if cfg!(target_os = "emscripten") {
             text.push_str(
                 "Drop the .nes file, or a .zip holding it, onto this page, or use the Choose \
                  ROM button under it",
             );
         } else {
-            let start = controls::key_name(shell.input.keys().get(controls::Control::Start));
-            text.push_str(&format!(
-                "Drop the .nes file, or a .zip holding it, onto this window, or press {} (A on \
-                 a gamepad) to choose it",
-                start.to_lowercase()
-            ));
+            text.push_str(
+                "Drop the .nes file, or a .zip holding it, onto this window, or press any key \
+                 or button to choose it",
+            );
         }
         text.push('.');
         if !status.is_empty() {
@@ -441,9 +440,9 @@ fn ask_for_rom(
     }
 }
 
-/// Shows SDL's file dialog; the chosen path arrives on `send`.
+/// Shows SDL's file dialog; its answer arrives on `send`, `None` if the player cancelled it.
 #[cfg(not(target_os = "emscripten"))]
-fn open_dialog(window: &sdl3::video::Window, send: &mpsc::Sender<PathBuf>) -> bool {
+fn open_dialog(window: &sdl3::video::Window, send: &mpsc::Sender<Option<PathBuf>>) -> bool {
     let send = std::sync::Mutex::new(send.clone());
     let filters = [
         sdl3::dialog::DialogFileFilter {
@@ -467,9 +466,8 @@ fn open_dialog(window: &sdl3::video::Window, send: &mpsc::Sender<PathBuf>) -> bo
         false,
         window,
         Box::new(move |result, _| {
-            if let (Ok(paths), Ok(send)) = (result, send.lock())
-                && let Some(path) = paths.into_iter().next()
-            {
+            if let Ok(send) = send.lock() {
+                let path = result.ok().and_then(|paths| paths.into_iter().next());
                 let _ = send.send(path);
             }
         }),
@@ -478,7 +476,7 @@ fn open_dialog(window: &sdl3::video::Window, send: &mpsc::Sender<PathBuf>) -> bo
 }
 
 #[cfg(target_os = "emscripten")]
-fn open_dialog(_: &sdl3::video::Window, _: &mpsc::Sender<PathBuf>) -> bool {
+fn open_dialog(_: &sdl3::video::Window, _: &mpsc::Sender<Option<PathBuf>>) -> bool {
     false
 }
 

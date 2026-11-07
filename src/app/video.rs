@@ -8,6 +8,7 @@ use super::menu::Nav;
 use super::settings::Settings;
 use sdl3::event::Event;
 use sdl3::gamepad::Gamepad;
+use sdl3::keyboard::Scancode;
 use sdl3::pixels::{Color, PixelFormat};
 use sdl3::rect::Rect;
 use sdl3::render::{FRect, ScaleMode, Texture, TextureCreator, WindowCanvas};
@@ -268,6 +269,24 @@ pub struct Events {
     pub dropped: Vec<PathBuf>,
     /// The key or button the port menu was waiting for ([`Input::set_listening`]).
     pub bound: Option<Pressed>,
+    /// A key, gamepad button or mouse button was pressed, other than a modifier key or the quit
+    /// control.
+    pub any_press: bool,
+}
+
+/// Keys held for a shortcut (Alt-Tab, Ctrl-C), never pressed on their own to act.
+fn is_modifier(key: Scancode) -> bool {
+    matches!(
+        key,
+        Scancode::LCtrl
+            | Scancode::RCtrl
+            | Scancode::LShift
+            | Scancode::RShift
+            | Scancode::LAlt
+            | Scancode::RAlt
+            | Scancode::LGui
+            | Scancode::RGui
+    )
 }
 
 /// Keyboard and gamepads, through the bindings in the settings.
@@ -337,10 +356,6 @@ impl Input {
         self.pad = settings.pad.clone();
     }
 
-    pub fn keys(&self) -> &Keys {
-        &self.keys
-    }
-
     /// Sends the next key or button of `device` to the menu instead of acting on it.
     pub fn set_listening(&mut self, device: Option<Device>) {
         self.listen = device;
@@ -364,6 +379,7 @@ impl Input {
                     events.menu_toggle = true;
                 }
                 Event::DropFile { filename, .. } => events.dropped.push(filename.into()),
+                Event::MouseButtonDown { .. } => events.any_press = true,
                 Event::KeyDown {
                     scancode: Some(key),
                     repeat,
@@ -374,8 +390,11 @@ impl Input {
                             events.bound = Some(Pressed::Key(key));
                             self.listen = None;
                         }
-                    } else if let Some(bound) = self.keys.control(key) {
-                        control = Some((bound, repeat));
+                    } else {
+                        let bound = self.keys.control(key);
+                        events.any_press |=
+                            !repeat && !is_modifier(key) && bound != Some(Control::Quit);
+                        control = bound.map(|bound| (bound, repeat));
                     }
                 }
                 Event::GamepadButtonDown { button, .. } => {
@@ -387,8 +406,10 @@ impl Input {
                     if self.listen == Some(Device::Gamepad) {
                         events.bound = Some(Pressed::Button(button));
                         self.listen = None;
-                    } else if self.pad.get(Control::Start) == Some(button) && held(Control::Select)
-                    {
+                        continue;
+                    }
+                    events.any_press |= self.pad.control(button) != Some(Control::Quit);
+                    if self.pad.get(Control::Start) == Some(button) && held(Control::Select) {
                         // For pads whose guide button the system keeps: Select held with Start.
                         events.menu_toggle = true;
                     } else if let Some(bound) = self.pad.control(button) {
