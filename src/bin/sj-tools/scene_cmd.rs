@@ -10,7 +10,7 @@ use solar_jetman::game::scene::{Game, SoundRequest, Start};
 use std::fs;
 use std::path::PathBuf;
 
-const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng OUT:HIGH:LOW] [--job N]|--launch LEVEL:COUNTER|--approach LEVEL|--surface LEVEL[:dock][:owned][:flag][:clear]|--shop LEVEL:SCORE:COUNTER:MAPPING|--equip LEVEL:OWNEDMASK(hex, bit = item):COUNTER|--map LEVEL:MAPPING:SUPER[:SCORE:LIVES:EQUIPMENT:WEAPON:DEVICE]|--interlude LEVEL:POD_Y:COUNTER:JOB|--badge LEVEL:GEMS:COUNTER|--lastpassword LEVEL|--message LEVEL:KIND:TEXT:ITEM[:CARGO[:COUNTER]] --offset N] [--compare DIR] [--original|--remake] [--aspect W:H] --frames F,F,... [--input FRAME:BUTTONS,...] [--out DIR] [ROM]
+const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng OUT:HIGH:LOW] [--job N]|--launch LEVEL:COUNTER|--approach LEVEL|--surface LEVEL[:dock][:owned][:flag][:clear]|--shop LEVEL:SCORE:COUNTER:MAPPING|--equip LEVEL:OWNEDMASK(hex, bit = item):COUNTER|--map LEVEL:MAPPING:SUPER[:SCORE:LIVES:EQUIPMENT:WEAPON:DEVICE]|--interlude LEVEL:POD_Y:COUNTER:JOB|--badge LEVEL:GEMS:COUNTER|--lastpassword LEVEL|--message LEVEL:KIND:TEXT:ITEM[:CARGO[:COUNTER]] --offset N] [--compare DIR] [--original|--remake] [--aspect W:H] --frames F,F,...|FIRST-LAST[/STEP],... [--animate FILE.png [--scale N]] [--audio FILE.wav] [--input FRAME:BUTTONS,...] [--out DIR] [ROM]
   Frames count as in the capture script: the original's frame numbers from power-on (--cold,
   the default) or from the title's first frame, which the capture script shows as frame 533
   (--warm). --launch starts in the launch scene of a level with the frame counter at COUNTER;
@@ -19,7 +19,13 @@ const USAGE: &str = "sj-tools scene [--cold|--warm|--story|--flight LEVEL [--rng
   FRAME and FRAME + 1 like the script does. --compare DIR compares each frame with the original's
   screenshot DIR/shot-FRAME.png (tools/mesen/title-capture.lua) and prints how many pixels differ. Writes scene-FRAME.png and scene-FRAME.idx (one NES colour
   number per pixel) in DIR (default vendor/compare/scene). --aspect W:H draws a wider view
-  (docs/widescreen.md).";
+  (docs/widescreen.md). --animate FILE.png writes the frames instead as one animated PNG
+  (plays in a browser), each shown until the next at 60 frames a second, the last for 2 s,
+  each pixel drawn N × N with --scale N (default 1). --audio FILE.wav writes the sound of the
+  passes run, as the program plays it (one frame of audio a pass, 48 kHz).";
+
+/// The sample rate of `--audio`.
+const AUDIO_RATE: u32 = 48_000;
 
 /// Pass number `p` runs in the original's frame `p + offset`; the state after it is shown one
 /// frame later.
@@ -44,6 +50,9 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
     // The original's rules (docs/deviations.md "Validation mode"): the default with --compare.
     let mut original: Option<bool> = None;
     let mut width = solar_jetman::game::view::ORIGINAL_WIDTH;
+    let mut animate: Option<PathBuf> = None;
+    let mut scale = 1usize;
+    let mut audio: Option<PathBuf> = None;
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -251,10 +260,9 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
             }
             "--frames" => {
                 let list = args.next().ok_or("--frames needs a list")?;
-                frames = list
-                    .split(',')
-                    .map(|f| f.parse::<i64>().map_err(|_| format!("bad frame `{f}`")))
-                    .collect::<Result<_, _>>()?;
+                for item in list.split(',') {
+                    frames.extend(frame_range(item)?);
+                }
             }
             "--input" => {
                 for item in args.next().ok_or("--input needs a list")?.split(',') {
@@ -281,6 +289,23 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
             }
             "--aspect" => width = crate::data_cmd::aspect_width(args.next())?,
             "--out" => out = PathBuf::from(args.next().ok_or("--out needs a folder")?),
+            "--audio" => {
+                audio = Some(PathBuf::from(
+                    args.next().ok_or("--audio needs a file name")?,
+                ));
+            }
+            "--scale" => {
+                scale = args
+                    .next()
+                    .and_then(|n| n.parse().ok())
+                    .filter(|n| (1..=8).contains(n))
+                    .ok_or("--scale needs a number 1-8")?;
+            }
+            "--animate" => {
+                animate = Some(PathBuf::from(
+                    args.next().ok_or("--animate needs a file name")?,
+                ));
+            }
             "--help" | "-h" => {
                 println!("{USAGE}");
                 return Ok(());
@@ -317,6 +342,19 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
     }
     let rgb = solar_jetman::game::ntsc::master_palette();
     frames.sort_unstable();
+    frames.dedup();
+    if animate.is_some() && compare.is_some() {
+        return Err("--animate and --compare do not go together".to_owned());
+    }
+    let mut animation = match &animate {
+        Some(path) => Some(Animation::new(
+            path,
+            usize::from(width),
+            scale,
+            frames.len(),
+        )?),
+        None => None,
+    };
     fs::create_dir_all(&out).map_err(|error| format!("{}: {error}", out.display()))?;
     gaps.sort_unstable();
     // The original frame in which pass `p` runs.
@@ -331,13 +369,36 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
     };
     // The sound requests need the sound data from the ROM; the drivers' answers (effects
     // started, songs called) are what the original's log holds.
-    let mut sound = solar_jetman::tools::replay::SoundModel::new(
-        &solar_jetman::tools::sound::sound_data(&rom)
-            .map_err(|error| format!("sound data: {error}"))?,
-    );
+    let sound_data = solar_jetman::tools::sound::sound_data(&rom)
+        .map_err(|error| format!("sound data: {error}"))?;
+    let mut sound = solar_jetman::tools::replay::SoundModel::new(&sound_data);
+    // The program's own player, for --audio: the requests of each pass, then a frame of audio.
+    let mut player = audio
+        .as_ref()
+        .map(|_| solar_jetman::game::sound::player::Player::new(sound_data.clone(), AUDIO_RATE));
+    let mut samples: Vec<f32> = Vec::new();
+    let play = |player: &mut Option<solar_jetman::game::sound::player::Player>,
+                requests: &[SoundRequest],
+                counter: u32| {
+        let Some(p) = player.as_mut() else {
+            return;
+        };
+        p.sound_mut().set_frame(counter as u8);
+        for &request in requests {
+            match request {
+                SoundRequest::SongIfNew(song) => p.sound_mut().play_song_if_new(song),
+                SoundRequest::SongLooped(song) => p.sound_mut().play_song_looped(song),
+                SoundRequest::Request(request) => p.sound_mut().apply(request),
+                SoundRequest::Pause => p.pause(),
+                SoundRequest::Resume => p.resume(),
+            }
+        }
+    };
     // What the scene's construction asked for was asked before its first picture: it is not
     // compared, but the driver knows which song is playing.
-    for request in game.take_sound() {
+    let first = game.take_sound();
+    play(&mut player, &first, game.sound_counter());
+    for request in first {
         match request {
             SoundRequest::Request(request) => sound.sound.apply(request),
             SoundRequest::SongIfNew(id) | SoundRequest::SongLooped(id) => sound
@@ -347,9 +408,8 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
         }
     }
     let mut sound_log: std::collections::BTreeMap<i64, Vec<String>> = Default::default();
-    let mut log_sound = |game: &mut Game, pass_frame: i64, counter: u32| {
-        let requests: Vec<_> = game
-            .take_sound()
+    let mut log_sound = |requests: Vec<SoundRequest>, pass_frame: i64, counter: u32| {
+        let requests: Vec<_> = requests
             .into_iter()
             .filter_map(|request| match request {
                 SoundRequest::Request(request) => Some(request),
@@ -389,9 +449,21 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
             let counter = game.sound_counter();
             game.pass(&assets, Buttons(buttons))
                 .map_err(|error| error.to_string())?;
-            log_sound(&mut game, callback, counter);
+            let requests = game.take_sound();
+            play(&mut player, &requests, game.sound_counter());
+            if let Some(p) = player.as_mut() {
+                samples.extend_from_slice(p.run_frame().1);
+            }
+            log_sound(requests, callback, counter);
         }
         game.draw(&mut frame, &assets, 1.0);
+        if let Some(animation) = animation.as_mut() {
+            // Shown until the next frame asked for, the last one for two seconds.
+            let next = frames.iter().find(|&&f| f > shown).copied();
+            let delay = next.map_or(120, |next| (next - shown).clamp(1, 600) as u16);
+            animation.add(&frame, &rgb, delay)?;
+            continue;
+        }
         let base = out.join(format!("scene-{shown}"));
         crate::data_cmd::write_png(&base.with_extension("png"), &frame, &rgb)?;
         let indices: Vec<u8> = frame.pixels.iter().map(|&c| c & 0x3F).collect();
@@ -416,6 +488,30 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
         println!("frame {shown}: {} ({})", base.display(), game.scene_name());
         shots.push((shown, frame.pixels.iter().map(|&c| c & 0x3F).collect()));
     }
+    if let Some(path) = &audio {
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        fs::write(path, solar_jetman::tools::sound::wav(&samples, AUDIO_RATE))
+            .map_err(|e| format!("{}: {e}", path.display()))?;
+        println!(
+            "audio: {} passes, {:.1} s: {}",
+            passes,
+            samples.len() as f64 / f64::from(AUDIO_RATE),
+            path.display()
+        );
+    }
+    if let Some(animation) = animation {
+        animation.finish()?;
+        println!(
+            "{} frames ({}-{}): {} ({})",
+            frames.len(),
+            frames[0],
+            frames[frames.len() - 1],
+            animate.unwrap_or_default().display(),
+            game.scene_name()
+        );
+    }
     if let Some(dir) = compare {
         compare_with_original(&dir, &shots)?;
         compare_sound(&dir, &sound_log, frame_of(1), frame_of(passes))?;
@@ -424,6 +520,90 @@ pub fn run(repo: &std::path::Path, args: &[String]) -> Result<(), String> {
 }
 
 /// One screenshot of the original: 256 × 240 RGB pixels.
+/// The frames of one item of `--frames`: `N`, or `FIRST-LAST` with an optional `/STEP`.
+fn frame_range(item: &str) -> Result<Vec<i64>, String> {
+    let bad = || format!("bad frame `{item}`: N or FIRST-LAST[/STEP]");
+    let number = |text: &str| text.parse::<i64>().map_err(|_| bad());
+    let Some((first, rest)) = item.split_once('-').filter(|(first, _)| !first.is_empty()) else {
+        return Ok(vec![number(item)?]);
+    };
+    let (last, step) = match rest.split_once('/') {
+        Some((last, step)) => (number(last)?, number(step)?),
+        None => (number(rest)?, 1),
+    };
+    let first = number(first)?;
+    if step < 1 || last < first {
+        return Err(bad());
+    }
+    Ok((first..=last).step_by(step as usize).collect())
+}
+
+/// An animated PNG written a frame at a time, each pixel `scale` × `scale`.
+struct Animation {
+    path: PathBuf,
+    scale: usize,
+    writer: png::Writer<std::io::BufWriter<fs::File>>,
+}
+
+impl Animation {
+    fn new(
+        path: &std::path::Path,
+        width: usize,
+        scale: usize,
+        frames: usize,
+    ) -> Result<Animation, String> {
+        let error = |e: &dyn std::fmt::Display| format!("{}: {e}", path.display());
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent).map_err(|e| error(&e))?;
+        }
+        let file = fs::File::create(path).map_err(|e| error(&e))?;
+        let mut encoder = png::Encoder::new(
+            std::io::BufWriter::new(file),
+            (width * scale) as u32,
+            (SCREEN_HEIGHT * scale) as u32,
+        );
+        encoder.set_color(png::ColorType::Rgb);
+        encoder.set_depth(png::BitDepth::Eight);
+        encoder
+            .set_animated(frames as u32, 0)
+            .map_err(|e| error(&e))?;
+        let writer = encoder.write_header().map_err(|e| error(&e))?;
+        Ok(Animation {
+            path: path.to_owned(),
+            scale,
+            writer,
+        })
+    }
+
+    /// Adds `frame`, shown for `delay` sixtieths of a second.
+    fn add(&mut self, frame: &Frame, rgb: &[[u8; 3]; 64], delay: u16) -> Result<(), String> {
+        let error = |e: png::EncodingError| format!("{}: {e}", self.path.display());
+        let scale = self.scale;
+        let pixels: Vec<u8> = frame
+            .pixels
+            .chunks(frame.width)
+            .flat_map(|line| {
+                let line: Vec<u8> = line
+                    .iter()
+                    .flat_map(|&colour| {
+                        std::iter::repeat_n(rgb[usize::from(colour & 0x3F)], scale).flatten()
+                    })
+                    .collect();
+                std::iter::repeat_n(line, scale).flatten()
+            })
+            .collect();
+        self.writer.set_frame_delay(delay, 60).map_err(error)?;
+        self.writer.write_image_data(&pixels).map_err(error)
+    }
+
+    fn finish(self) -> Result<(), String> {
+        let path = self.path;
+        self.writer
+            .finish()
+            .map_err(|e| format!("{}: {e}", path.display()))
+    }
+}
+
 fn read_shot(path: &std::path::Path) -> Result<Vec<[u8; 3]>, String> {
     let file = fs::File::open(path).map_err(|error| format!("{}: {error}", path.display()))?;
     let mut reader = png::Decoder::new(std::io::BufReader::new(file))
