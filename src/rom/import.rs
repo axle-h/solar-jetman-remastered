@@ -146,15 +146,26 @@ struct Builder<'a> {
 }
 
 impl Builder<'_> {
+    /// `len` bytes at this ROM's offset `offset` (one a pointer in the ROM gave).
     fn bytes(&self, offset: usize, len: usize) -> Result<&[u8], ImportError> {
         self.rom
             .bytes(offset, len)
             .ok_or(ImportError::OutOfRange { offset, len })
     }
 
+    /// `len` bytes of a table the catalogue places at the USA release's offset `usa`.
+    fn table(&self, usa: usize, len: usize) -> Result<&[u8], ImportError> {
+        self.bytes(self.rom.locate(usa), len)
+    }
+
+    /// The manifest's source entry of raw bytes at the USA release's offset `usa`.
+    fn source(&self, usa: usize, len: usize) -> SourceEntry {
+        raw_source(self.rom.locate(usa), len)
+    }
+
     /// Decodes a blob and checks its size against the spec.
     fn decode(&self, path: &str, blob: &Blob) -> Result<(Vec<u8>, SourceEntry), ImportError> {
-        let offset = blob.offset as usize;
+        let offset = blob.located(self.rom);
         let decoded = blob.decode(self.rom).ok_or(ImportError::OutOfRange {
             offset,
             len: blob.stored_bytes(),
@@ -263,15 +274,15 @@ impl Builder<'_> {
         use palettes::*;
         let mut presets = Vec::with_capacity(PRESETS);
         for preset in 0..PRESETS {
-            let pointer = self.bytes(PRESET_POINTERS + 2 * preset, 2)?;
+            let pointer = self.table(PRESET_POINTERS + 2 * preset, 2)?;
             let address = u16::from_le_bytes([pointer[0], pointer[1]]);
-            let first_entry = self.bytes(PRESET_FIRST_ENTRY + preset, 1)?[0];
-            let count = self.bytes(PRESET_COUNT + preset, 1)?[0];
+            let first_entry = self.table(PRESET_FIRST_ENTRY + preset, 1)?[0];
+            let count = self.table(PRESET_COUNT + preset, 1)?[0];
             let start = bank_offset(0, address);
             let end = start + usize::from(count);
             if address < 0x8000
-                || start < PRESET_DATA.0
-                || end > PRESET_DATA.1
+                || start < self.rom.locate(PRESET_DATA.0)
+                || end > self.rom.locate_end(PRESET_DATA.1)
                 || usize::from(first_entry) + usize::from(count) > 32
             {
                 return Err(ImportError::BadPointer {
@@ -292,19 +303,22 @@ impl Builder<'_> {
         );
         entry
             .sources
-            .push(raw_source(PRESET_DATA.0, PRESET_DATA.1 - PRESET_DATA.0));
+            .push(self.source(PRESET_DATA.0, PRESET_DATA.1 - PRESET_DATA.0));
         self.add_ron(entry, &PalettePresets { presets })
     }
 
     fn level_palettes(&mut self) -> Result<(), ImportError> {
         use palettes::*;
-        let low = self.bytes(HEADER_POINTERS_LOW, LEVELS)?.to_vec();
-        let high = self.bytes(HEADER_POINTERS_HIGH, LEVELS)?.to_vec();
+        let low = self.table(HEADER_POINTERS_LOW, LEVELS)?.to_vec();
+        let high = self.table(HEADER_POINTERS_HIGH, LEVELS)?.to_vec();
         let mut levels = Vec::with_capacity(LEVELS);
         for level in 0..LEVELS {
             let address = u16::from_le_bytes([low[level], high[level]]);
             let header = bank_offset(2, address);
-            if address < 0x8000 || header < HEADERS.0 || header + 27 > HEADERS.1 {
+            if address < 0x8000
+                || header < self.rom.locate(HEADERS.0)
+                || header + 27 > self.rom.locate_end(HEADERS.1)
+            {
                 return Err(ImportError::BadPointer {
                     what: format!("level {level} header"),
                     address,
@@ -315,10 +329,10 @@ impl Builder<'_> {
             // Level 13 reads past the end of both 13-entry tables, as the original does.
             let planet = level < PLANETS;
             let approach_globe = planet
-                .then(|| self.bytes(APPROACH + APPROACH_COLOURS * level, APPROACH_COLOURS))
+                .then(|| self.table(APPROACH + APPROACH_COLOURS * level, APPROACH_COLOURS))
                 .transpose()?;
             let surface = planet
-                .then(|| self.bytes(SURFACE + SURFACE_COLOURS * level, SURFACE_COLOURS))
+                .then(|| self.table(SURFACE + SURFACE_COLOURS * level, SURFACE_COLOURS))
                 .transpose()?;
             levels.push(LevelPalette {
                 gameplay: HexRows(gameplay),
@@ -333,9 +347,9 @@ impl Builder<'_> {
             Certainty::Verified,
         );
         entry.sources = vec![
-            raw_source(HEADERS.0, HEADERS.1 - HEADERS.0),
-            raw_source(APPROACH, APPROACH_COLOURS * PLANETS),
-            raw_source(SURFACE, SURFACE_COLOURS * PLANETS),
+            self.source(HEADERS.0, HEADERS.1 - HEADERS.0),
+            self.source(APPROACH, APPROACH_COLOURS * PLANETS),
+            self.source(SURFACE, SURFACE_COLOURS * PLANETS),
         ];
         self.add_ron(entry, &LevelPalettes { levels })
     }
@@ -343,7 +357,7 @@ impl Builder<'_> {
     fn screen_palettes(&mut self) -> Result<(), ImportError> {
         use palettes::*;
         let row = |offset: usize, len: usize| -> Result<HexRows<16>, ImportError> {
-            Ok(HexRows(self.bytes(offset, len)?.to_vec()))
+            Ok(HexRows(self.table(offset, len)?.to_vec()))
         };
         let frames_screen = FRAMES_SCREEN
             .iter()
@@ -367,7 +381,7 @@ impl Builder<'_> {
             title_fade_end: HexRows(
                 TITLE_FADE_END
                     .iter()
-                    .map(|&offset| self.bytes(offset, 1).map(|b| b[0]))
+                    .map(|&offset| self.table(offset, 1).map(|b| b[0]))
                     .collect::<Result<_, _>>()?,
             ),
             title_flash_white: row(TITLE_FLASH_WHITE, 1)?,
@@ -382,14 +396,14 @@ impl Builder<'_> {
             Certainty::Read,
         );
         entry.sources = vec![
-            raw_source(FRAMES_SCREEN[0], 2 * FRAMES_SCREEN_COLOURS),
-            raw_source(
+            self.source(FRAMES_SCREEN[0], 2 * FRAMES_SCREEN_COLOURS),
+            self.source(
                 BACKDROP,
                 BACKDROP_COLOURS + BACKDROP_VARIANT_COUNT * BACKDROP_VARIANT_COLOURS,
             ),
-            raw_source(TITLE_FADE, TITLE_FADE_COLUMNS * TITLE_FADE_STEPS),
-            raw_source(TITLE_FLASH_WHITE, 1),
-            raw_source(ANALYSIS_PAIRS, 2 * ANALYSIS_PAIR_COUNT),
+            self.source(TITLE_FADE, TITLE_FADE_COLUMNS * TITLE_FADE_STEPS),
+            self.source(TITLE_FLASH_WHITE, 1),
+            self.source(ANALYSIS_PAIRS, 2 * ANALYSIS_PAIR_COUNT),
         ];
         self.add_ron(entry, &palettes)
     }
@@ -397,7 +411,7 @@ impl Builder<'_> {
     /// The flight's mothership picture (printer message 49, text.md 2.1) and its two tables.
     fn flight(&mut self) -> Result<(), ImportError> {
         use catalogue::flight::*;
-        let message = self.bytes(MESSAGE, MESSAGE_LENGTH)?.to_vec();
+        let message = self.table(MESSAGE, MESSAGE_LENGTH)?.to_vec();
         let mut writes: Vec<NametableWrite> = Vec::new();
         let mut bytes = message.iter().copied();
         // Made-up test ROMs have no message: the picture is then empty.
@@ -433,11 +447,11 @@ impl Builder<'_> {
             "interplanetary flight: the mothership picture, printer message 49 (scenes.md 5)",
             Certainty::Verified,
         );
-        picture_entry.sources = vec![raw_source(MESSAGE, MESSAGE_LENGTH)];
+        picture_entry.sources = vec![self.source(MESSAGE, MESSAGE_LENGTH)];
         self.add_ron(picture_entry, &Picture { writes })?;
         let tables = FlightTables {
-            window_colours: HexRows(self.bytes(WINDOW, WINDOW_LENGTH)?.to_vec()),
-            ring_sine: HexRows(self.bytes(SINE, SINE_LENGTH)?.to_vec()),
+            window_colours: HexRows(self.table(WINDOW, WINDOW_LENGTH)?.to_vec()),
+            ring_sine: HexRows(self.table(SINE, SINE_LENGTH)?.to_vec()),
         };
         let mut entry = entry(
             TABLES_PATH,
@@ -446,8 +460,8 @@ impl Builder<'_> {
             Certainty::Verified,
         );
         entry.sources = vec![
-            raw_source(WINDOW, WINDOW_LENGTH),
-            raw_source(SINE, SINE_LENGTH),
+            self.source(WINDOW, WINDOW_LENGTH),
+            self.source(SINE, SINE_LENGTH),
         ];
         self.add_ron(entry, &tables)
     }
@@ -455,13 +469,13 @@ impl Builder<'_> {
     fn generated_tiles(&mut self) -> Result<(), ImportError> {
         use generated::*;
         let tables = GeneratedTileTables {
-            gauge_rows: HexRows(self.bytes(GAUGE_ROWS, LENGTH)?.to_vec()),
-            star_column_masks: HexRows(self.bytes(STAR_MASKS, LENGTH)?.to_vec()),
-            backdrop_bar_widths: HexRows(self.bytes(BAR_WIDTHS, BARS)?.to_vec()),
-            backdrop_bar_columns: HexRows(self.bytes(BAR_COLUMNS, BARS)?.to_vec()),
-            backdrop_phase_tiles: HexRows(self.bytes(PHASE_TILES, PHASE_TILES_LENGTH)?.to_vec()),
-            backdrop_spawn_x: HexRows(self.bytes(SPAWN_X, SPAWN_ENTRIES)?.to_vec()),
-            backdrop_spawn_types: HexRows(self.bytes(SPAWN_TYPES, SPAWN_ENTRIES)?.to_vec()),
+            gauge_rows: HexRows(self.table(GAUGE_ROWS, LENGTH)?.to_vec()),
+            star_column_masks: HexRows(self.table(STAR_MASKS, LENGTH)?.to_vec()),
+            backdrop_bar_widths: HexRows(self.table(BAR_WIDTHS, BARS)?.to_vec()),
+            backdrop_bar_columns: HexRows(self.table(BAR_COLUMNS, BARS)?.to_vec()),
+            backdrop_phase_tiles: HexRows(self.table(PHASE_TILES, PHASE_TILES_LENGTH)?.to_vec()),
+            backdrop_spawn_x: HexRows(self.table(SPAWN_X, SPAWN_ENTRIES)?.to_vec()),
+            backdrop_spawn_types: HexRows(self.table(SPAWN_TYPES, SPAWN_ENTRIES)?.to_vec()),
         };
         let mut entry = entry(
             PATH,
@@ -470,13 +484,13 @@ impl Builder<'_> {
             Certainty::Read,
         );
         entry.sources = vec![
-            raw_source(GAUGE_ROWS, LENGTH),
-            raw_source(STAR_MASKS, LENGTH),
-            raw_source(BAR_WIDTHS, BARS),
-            raw_source(BAR_COLUMNS, BARS),
-            raw_source(PHASE_TILES, PHASE_TILES_LENGTH),
-            raw_source(SPAWN_X, SPAWN_ENTRIES),
-            raw_source(SPAWN_TYPES, SPAWN_ENTRIES),
+            self.source(GAUGE_ROWS, LENGTH),
+            self.source(STAR_MASKS, LENGTH),
+            self.source(BAR_WIDTHS, BARS),
+            self.source(BAR_COLUMNS, BARS),
+            self.source(PHASE_TILES, PHASE_TILES_LENGTH),
+            self.source(SPAWN_X, SPAWN_ENTRIES),
+            self.source(SPAWN_TYPES, SPAWN_ENTRIES),
         ];
         self.add_ron(entry, &tables)
     }
@@ -486,7 +500,7 @@ impl Builder<'_> {
     /// The songs and effects (sound.md; format in [`crate::rom::sound`]).
     fn sound(&mut self) -> Result<(), ImportError> {
         let sound = crate::rom::sound::decode(self.rom).map_err(ImportError::Sound)?;
-        let data = crate::rom::sound::at::DATA;
+        let data = crate::rom::sound::data_range(self.rom);
         for (number, song) in sound.songs.iter().enumerate() {
             let path = song_path(number);
             let mut entry = entry(
@@ -497,7 +511,7 @@ impl Builder<'_> {
             );
             let events: usize = song.tracks.iter().map(|track| track.events.len()).sum();
             entry.sources = vec![
-                raw_source(crate::rom::sound::at::TEMPOS + number, 1),
+                self.source(crate::rom::sound::at::TEMPOS + number, 1),
                 SourceEntry {
                     rom_offset: format!("0x{:05X}", data.0),
                     format: "music".to_owned(),
@@ -522,7 +536,7 @@ impl Builder<'_> {
                 decoded_bytes: sound.effects.len() as u32,
                 bias: None,
             },
-            raw_source(
+            self.source(
                 crate::rom::sound::at::RAM_EFFECT_TEMPLATE,
                 crate::rom::sound::RAM_EFFECT_BYTES,
             ),

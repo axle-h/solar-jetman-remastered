@@ -1,9 +1,8 @@
-//! Checking that a `.nes` file is the USA release (`docs/spec/rom-map.md`, section 1).
+//! Checking that a `.nes` file is a release we accept, the USA one (`docs/spec/rom-map.md`,
+//! section 1) or the Europe one ([`crate::rom::release`]).
 
+use crate::rom::release::Release;
 use std::fmt;
-
-/// SHA-1 of the USA release's PRG ROM, without the 16-byte header.
-pub const PRG_SHA1: &str = "caa4d1ab710bd766f8505ef24f5702dac6e988af";
 
 /// Size of the PRG ROM: eight 32 KB banks.
 pub const PRG_SIZE: usize = 8 * BANK_SIZE;
@@ -31,7 +30,7 @@ pub enum RomError {
     HasChrRom { bytes: u64 },
     /// The file ends before the PRG ROM the header announces.
     Truncated { needed: usize, len: usize },
-    /// The PRG ROM is not the USA release (another version, a hack or a bad dump).
+    /// The PRG ROM is not a release we accept (another version, a hack or a bad dump).
     WrongChecksum { sha1: String },
 }
 
@@ -63,7 +62,7 @@ impl fmt::Display for RomError {
             ),
             RomError::WrongChecksum { sha1 } => write!(
                 f,
-                "not the USA release of Solar Jetman: PRG ROM SHA-1 is {sha1}, expected {PRG_SHA1}"
+                "not the USA or Europe release of Solar Jetman: PRG ROM SHA-1 is {sha1}"
             ),
         }
     }
@@ -133,23 +132,25 @@ fn nes2_rom_size(low: u8, high_nibble: u8, unit: u64) -> u64 {
     }
 }
 
-/// The PRG ROM of a checked USA release.
+/// The PRG ROM of a checked release.
 #[derive(Clone)]
 pub struct Rom {
     prg: Vec<u8>,
+    release: Release,
 }
 
 impl fmt::Debug for Rom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Rom")
             .field("prg_len", &self.prg.len())
+            .field("release", &self.release)
             .finish()
     }
 }
 
 impl Rom {
     /// Checks the bytes of a `.nes` file: the header must describe mapper 7 with 256 KB of PRG
-    /// ROM and no CHR ROM, and the PRG ROM must hash to [`PRG_SHA1`].
+    /// ROM and no CHR ROM, and the PRG ROM must hash to a [`Release`]'s SHA-1.
     pub fn from_nes_file(file: &[u8]) -> Result<Rom, RomError> {
         let header = NesHeader::parse(file)?;
         if header.mapper != AXROM {
@@ -176,17 +177,51 @@ impl Rom {
             });
         };
         let sha1 = sha1_hex(prg);
-        if sha1 != PRG_SHA1 {
+        let Some(release) = Release::from_prg_sha1(&sha1) else {
             return Err(RomError::WrongChecksum { sha1 });
-        }
-        Ok(Rom { prg: prg.to_vec() })
+        };
+        Ok(Rom {
+            prg: prg.to_vec(),
+            release,
+        })
     }
 
-    /// A ROM from PRG bytes that were not checked: for tests on synthetic data only.
+    /// A ROM from PRG bytes that were not checked, laid out as the USA release: for tests on
+    /// synthetic data only.
     #[cfg(test)]
     pub(crate) fn unchecked(prg: Vec<u8>) -> Rom {
         assert_eq!(prg.len(), PRG_SIZE);
-        Rom { prg }
+        Rom {
+            prg,
+            release: Release::Usa,
+        }
+    }
+
+    /// Which release this is.
+    pub fn release(&self) -> Release {
+        self.release
+    }
+
+    /// This ROM's offset of what the USA release holds at PRG ROM offset `usa`: every location
+    /// in the catalogue and the extraction is a USA one, read through this.
+    pub fn locate(&self, usa: usize) -> usize {
+        self.release.locate(usa)
+    }
+
+    /// [`Rom::locate`] for the exclusive end of a region.
+    pub fn locate_end(&self, usa_end: usize) -> usize {
+        self.release.locate_end(usa_end)
+    }
+
+    /// [`Rom::locate`] for a CPU address with `bank` mapped.
+    pub fn locate_address(&self, bank: u8, address: u16) -> u16 {
+        self.release.locate_address(bank, address)
+    }
+
+    /// The USA release's address of what this ROM holds at `address` with `bank` mapped: for
+    /// pointers read from this ROM that the game compares with USA addresses.
+    pub fn usa_address(&self, bank: u8, address: u16) -> Option<u16> {
+        self.release.usa_address(bank, address)
     }
 
     /// The whole 256 KB PRG ROM.

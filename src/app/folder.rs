@@ -3,7 +3,7 @@
 //! newer importer can run again without asking.
 
 use super::settings::Settings;
-use solar_jetman::rom::{IMPORTER_VERSION, MANIFEST_PATH, Manifest, PRG_SHA1};
+use solar_jetman::rom::{IMPORTER_VERSION, MANIFEST_PATH, Manifest, Release};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -162,7 +162,9 @@ impl Folder {
             return PackState::Missing;
         };
         match toml::from_str::<Manifest>(&text) {
-            Ok(m) if m.importer_version == IMPORTER_VERSION && m.rom_sha1 == PRG_SHA1 => {}
+            Ok(m)
+                if m.importer_version == IMPORTER_VERSION
+                    && Release::from_prg_sha1(&m.rom_sha1).is_some() => {}
             _ => return PackState::Stale,
         }
         let mut files = Files::new();
@@ -225,6 +227,7 @@ fn read_tree(dir: &Path, prefix: &str, files: &mut Files) -> Result<(), String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use solar_jetman::rom::{EUROPE_PRG_SHA1, PRG_SHA1};
 
     fn temp(name: &str) -> Folder {
         let root =
@@ -270,6 +273,12 @@ mod tests {
             other => panic!("{other:?}"),
         }
         assert_eq!(folder.stored_rom().unwrap(), b"rom");
+        files.insert(
+            MANIFEST_PATH.into(),
+            manifest(IMPORTER_VERSION, EUROPE_PRG_SHA1),
+        );
+        folder.write_pack(&files, b"rom").unwrap();
+        assert!(matches!(folder.read_pack(), PackState::Current(_)));
 
         files.insert(
             MANIFEST_PATH.into(),

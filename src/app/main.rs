@@ -138,8 +138,8 @@ fn import_bytes(file: Vec<u8>) -> Result<(Files, Vec<u8>), String> {
     let nes = romfile::rom_bytes(file)?;
     let rom = solar_jetman::rom::Rom::from_nes_file(&nes).map_err(|error| match error {
         solar_jetman::rom::RomError::WrongChecksum { .. } => {
-            "This is not the USA release of Solar Jetman (NES). Other releases and hacks \
-             do not work."
+            "This is not the USA or Europe release of Solar Jetman (NES). Other releases \
+             and hacks do not work."
                 .to_owned()
         }
         other => format!("This is not a usable NES ROM file: {other}."),
@@ -413,8 +413,8 @@ fn ask_for_rom(
                 Err(message) => *status = message,
             }
         }
-        let mut text = "Solar Jetman needs the game's data from your own copy of the ROM (USA, \
-                        NES).\n\n"
+        let mut text = "Solar Jetman needs the game's data from your own copy of the ROM (USA \
+                        or Europe, NES).\n\n"
             .to_owned();
         if cfg!(target_os = "android") {
             // Nothing can be dropped on an Android app.

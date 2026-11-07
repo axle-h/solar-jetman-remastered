@@ -241,9 +241,9 @@ pub fn parse_capture(text: &str) -> Result<Capture, String> {
 /// ROM's tables (sound.md 3.1) to recognise song starts in a capture.
 pub fn song_starts(rom: &Rom) -> Result<Vec<(u8, [u16; 4])>, String> {
     use crate::rom::sound::at;
-    let byte = |offset: usize| {
-        rom.byte(offset)
-            .ok_or_else(|| format!("ROM 0x{offset:05X} is past the end"))
+    let byte = |usa: usize| {
+        rom.byte(rom.locate(usa))
+            .ok_or_else(|| format!("ROM 0x{usa:05X} is past the end"))
     };
     (0..SONG_COUNT)
         .map(|song| {

@@ -2,7 +2,7 @@
 
 A clean-room re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warpship* (NES, 1990) in Rust, for Linux, Windows, macOS and Android handhelds. It plays as the original did, without the NES's flicker, slowdown and bugs, and with smooth, low-latency motion on modern displays.
 
-**This project contains none of the original game's code, graphics or sound. You need your own copy of the USA ROM**, `Solar Jetman - Hunt for the Golden Warpship (USA).nes` (or a `.zip` holding it). Other releases and hacks are not accepted.
+**This project contains none of the original game's code, graphics or sound. You need your own copy of the USA or Europe ROM**, `Solar Jetman - Hunt for the Golden Warpship (USA).nes` or `(Europe).nes` (or a `.zip` holding it). Other releases and hacks are not accepted. The Europe release's music tempos, set for a 50 Hz console, are brought back to the game's 60 Hz.
 
 ## Download and play
 

@@ -22,7 +22,8 @@ use crate::rom::Rom;
 use crate::rom::cartridge::bank_offset;
 use std::collections::BTreeMap;
 
-/// Where the level data is (levels.md 3, 4.1, 6.2), as bank and CPU address.
+/// Where the level data is (levels.md 3, 4.1, 6.2), as bank and CPU address in the USA
+/// release (read through [`Rom::locate_address`]).
 mod at {
     pub const HEADER_POINTERS_LOW: (u8, u16) = (2, 0x956E);
     pub const HEADER_POINTERS_HIGH: (u8, u16) = (2, 0x9598);
@@ -88,12 +89,15 @@ mod at {
 /// End of a list in a shape class record.
 const END: u8 = 0xFF;
 
-/// Reads the ROM through bank-relative addresses, reporting what is out of place.
+/// Reads the ROM through bank-relative addresses, reporting what is out of place. Tables named
+/// in [`at`] are USA addresses, located in the ROM's release; addresses read from the ROM are
+/// its own.
 struct Reader<'a> {
     rom: &'a Rom,
 }
 
 impl Reader<'_> {
+    /// `len` bytes at this ROM's `address` (one a pointer in the ROM gave).
     fn bytes(&self, bank: u8, address: u16, len: usize) -> Result<&[u8], String> {
         let start = bank_offset(bank, address);
         // Data never crosses into the next bank.
@@ -107,8 +111,26 @@ impl Reader<'_> {
             .ok_or_else(|| format!("bank {bank}:${address:04X} is past the end of the ROM"))
     }
 
+    /// `len` bytes of the table at the USA release's `address`.
+    fn table(&self, (bank, address): (u8, u16), len: usize) -> Result<&[u8], String> {
+        self.bytes(bank, self.rom.locate_address(bank, address), len)
+    }
+
+    /// Entry `index` of the byte table at the USA release's `address`.
     fn byte(&self, (bank, address): (u8, u16), index: usize) -> Result<u8, String> {
+        let address = self.rom.locate_address(bank, address);
         Ok(self.bytes(bank, address + index as u16, 1)?[0])
+    }
+
+    /// A region of [`at`], first and last address, located in this ROM.
+    fn region(&self, (bank, first, last): (u8, u16, u16)) -> (u8, u16, u16) {
+        let locate = |address| self.rom.locate_address(bank, address);
+        (bank, locate(first), locate(last))
+    }
+
+    /// Checks that `address`, read from this ROM, lies in a region of [`at`].
+    fn check_within(&self, what: &str, address: u16, region: (u8, u16, u16)) -> Result<(), String> {
+        check_within(what, address, self.region(region))
     }
 
     /// A 16-bit address from tables of low and high bytes.
@@ -146,11 +168,7 @@ fn check_within(
 pub fn extract(rom: &Rom) -> Result<World, String> {
     let read = Reader { rom };
     let surface_pictures = read
-        .bytes(
-            at::SURFACE_PICTURES.0,
-            at::SURFACE_PICTURES.1,
-            at::GRAPHICS_TYPES,
-        )?
+        .table(at::SURFACE_PICTURES, at::GRAPHICS_TYPES)?
         .to_vec();
 
     let mut levels = Vec::with_capacity(LEVEL_COUNT);
@@ -182,7 +200,7 @@ pub fn extract(rom: &Rom) -> Result<World, String> {
             read.split_pointer(at::CLASS_MAP_POINTERS_LOW, at::CLASS_MAP_POINTERS_HIGH, set)?;
         block_classes.push(HexRows(read.bytes(2, address, BLOCKS_PER_SET)?.to_vec()));
     }
-    let chunk_bytes = read.bytes(at::CHUNKS.0, at::CHUNKS.1, CHUNKS * 64)?;
+    let chunk_bytes = read.table(at::CHUNKS, CHUNKS * 64)?;
     let chunks = chunk_bytes
         .chunks(64)
         .map(|chunk| HexRows(chunk.to_vec()))
@@ -191,8 +209,8 @@ pub fn extract(rom: &Rom) -> Result<World, String> {
     let mut classes = Vec::with_capacity(SHAPE_CLASSES);
     for class in 0..SHAPE_CLASSES {
         let address = read.split_pointer(at::CLASS_POINTERS_LOW, at::CLASS_POINTERS_HIGH, class)?;
-        check_within(&format!("shape class {class}"), address, at::CLASS_RECORDS)?;
-        let end = usize::from(at::CLASS_RECORDS.2 - address) + 1;
+        read.check_within(&format!("shape class {class}"), address, at::CLASS_RECORDS)?;
+        let end = usize::from(read.region(at::CLASS_RECORDS).2 - address) + 1;
         let record = read.bytes(2, address, end)?;
         let segments = parse_shape_class(record)
             .map_err(|message| format!("shape class {class}: {message}"))?;
@@ -220,7 +238,7 @@ fn level(
     surface_pictures: &[u8],
 ) -> Result<(Level, ChunkMap), String> {
     let address = read.split_pointer(at::HEADER_POINTERS_LOW, at::HEADER_POINTERS_HIGH, number)?;
-    check_within("header", address, at::HEADERS)?;
+    read.check_within("header", address, at::HEADERS)?;
     let header = read.bytes(2, address, at::HEADER_BYTES)?;
     let big_endian = |i: usize| u16::from_be_bytes([header[i], header[i + 1]]);
     let width = header[8].wrapping_add(1);
@@ -235,7 +253,7 @@ fn level(
 
     let count = usize::from(header[24]);
     let list = u16::from_le_bytes([header[25], header[26]]);
-    check_within("object list", list, at::OBJECT_LISTS)?;
+    read.check_within("object list", list, at::OBJECT_LISTS)?;
     let list_bytes = read.bytes(2, list, count * at::OBJECT_BYTES)?;
     let objects = list_bytes
         .chunks(at::OBJECT_BYTES)
@@ -250,7 +268,7 @@ fn level(
     let stride = 2 * (usize::from(header[8] >> 1) + 1);
     let rows = usize::from(height) + 1;
     let map_address = read.word_pointer(at::MAP_POINTERS, number)?;
-    check_within("map", map_address, at::MAPS)?;
+    read.check_within("map", map_address, at::MAPS)?;
     let chunks = read.bytes(3, map_address, rows * stride)?.to_vec();
 
     // levels.md 4.5: H / 4 + 1 rows of S bytes, 2 bits per chunk row.
@@ -259,7 +277,7 @@ fn level(
         at::PALETTE_MAP_POINTERS_HIGH,
         number,
     )?;
-    check_within("palette map", palette_address, at::PALETTE_MAPS)?;
+    read.check_within("palette map", palette_address, at::PALETTE_MAPS)?;
     let palette_rows = usize::from(height) / 4 + 1;
     let palette_bytes = read.bytes(0, palette_address, palette_rows * stride)?;
     let palettes = (0..rows)
@@ -423,9 +441,10 @@ fn layout_table(
     count: usize,
 ) -> Result<Vec<Vec<Piece>>, String> {
     let mut table = Vec::with_capacity(count);
+    let (_, first, last) = reader.region((1, at::LAYOUT_RANGE.0, at::LAYOUT_RANGE.1));
     for index in 0..count {
         let address = reader.split_pointer(low, high, index)?;
-        if (at::LAYOUT_RANGE.0..=at::LAYOUT_RANGE.1).contains(&address) {
+        if (first..=last).contains(&address) {
             table.push(layout(reader, address)?);
         } else {
             table.push(Vec::new());
@@ -434,18 +453,25 @@ fn layout_table(
     Ok(table)
 }
 
-/// The sprite sets records at `table` (graphics.md 6.4).
+/// The sprite sets records at `table` (graphics.md 6.4). Their tile addresses are given as
+/// the USA release's, where the game looks for the tiles.
 fn set_records(reader: &Reader, table: (u8, u16), count: usize) -> Result<Vec<SetRecord>, String> {
-    Ok(reader
-        .bytes(table.0, table.1, 5 * count)?
+    reader
+        .table(table, 5 * count)?
         .chunks(5)
-        .map(|b| SetRecord {
-            first: b[0],
-            end: b[1],
-            address: u16::from_le_bytes([b[2], b[3]]),
-            count: b[4],
+        .map(|b| {
+            let address = u16::from_le_bytes([b[2], b[3]]);
+            Ok(SetRecord {
+                first: b[0],
+                end: b[1],
+                address: reader
+                    .rom
+                    .usa_address(table.0, address)
+                    .ok_or_else(|| format!("sprite tiles at ${address:04X}"))?,
+                count: b[4],
+            })
         })
-        .collect())
+        .collect()
 }
 
 /// The sprite layouts and which tile sets each level loads (objects.md 5.2, 6; graphics.md
@@ -465,7 +491,7 @@ pub fn sprite_file(rom: &Rom) -> Result<SpriteFile, String> {
 
     // The per-level lists: for each level a count and that many bytes (list A), then the same
     // for list B.
-    let (bank, first, last) = at::SET_LISTS;
+    let (bank, first, last) = reader.region(at::SET_LISTS);
     let bytes = reader.bytes(bank, first, usize::from(last - first) + 1)?;
     let mut at_byte = 0;
     let mut take = || -> Result<Vec<u8>, String> {
@@ -561,7 +587,7 @@ fn placements(reader: &Reader, level: usize) -> Result<(Vec<Placement>, Vec<Opti
 /// run past the warp tables into the program's own code, so they are never written to the pack.
 pub fn validation_input(rom: &Rom) -> Result<ValidationInput, String> {
     let reader = Reader { rom };
-    let bytes = reader.bytes(at::WARP_SHIMMER.0, at::WARP_SHIMMER.1, SHIMMER_BYTES)?;
+    let bytes = reader.table(at::WARP_SHIMMER, SHIMMER_BYTES)?;
     Ok(ValidationInput {
         warp_shimmer: bytes.into(),
     })
@@ -579,10 +605,10 @@ pub fn object_data(rom: &Rom) -> Result<ObjectData, String> {
         lists.push(list);
         group_dy.push(dy);
     }
-    let frames = reader.bytes(at::TYPE_FRAMES.0, at::TYPE_FRAMES.1, TYPE_COUNT)?;
-    let states = reader.bytes(at::TYPE_STATES.0, at::TYPE_STATES.1, TYPE_COUNT)?;
+    let frames = reader.table(at::TYPE_FRAMES, TYPE_COUNT)?;
+    let states = reader.table(at::TYPE_STATES, TYPE_COUNT)?;
     let table = |at: (u8, u16), len: usize| -> Result<HexRows<16>, String> {
-        Ok(HexRows(reader.bytes(at.0, at.1, len)?.to_vec()))
+        Ok(HexRows(reader.table(at, len)?.to_vec()))
     };
     Ok(ObjectData {
         placements: lists,
@@ -593,13 +619,9 @@ pub fn object_data(rom: &Rom) -> Result<ObjectData, String> {
         flags_high: table(at::FLAGS_HIGH, FLAG_ENTRIES_HIGH)?,
         half_width: table(at::HALF_WIDTHS, SIZED_FRAMES)?,
         half_height: table(at::HALF_HEIGHTS, SIZED_FRAMES)?,
-        warp_mesh: HexRows(reader.bytes(at::WARP_MESH.0, at::WARP_MESH.1, 65)?.to_vec()),
+        warp_mesh: HexRows(reader.table(at::WARP_MESH, 65)?.to_vec()),
         demo_waypoints: reader
-            .bytes(
-                at::DEMO_WAYPOINTS.0,
-                at::DEMO_WAYPOINTS.1,
-                5 * DEMO_WAYPOINTS,
-            )?
+            .table(at::DEMO_WAYPOINTS, 5 * DEMO_WAYPOINTS)?
             .as_chunks::<5>()
             .0
             .iter()

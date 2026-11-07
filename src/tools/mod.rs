@@ -20,29 +20,51 @@ pub fn repo_root() -> PathBuf {
     root.canonicalize().unwrap_or(root)
 }
 
-/// The ROM to use when none is given: `$SJ_ROM`, else the first `vendor/rom/*.nes`.
-pub fn default_rom(repo: &Path) -> Option<PathBuf> {
-    if let Some(path) = std::env::var_os("SJ_ROM") {
-        return Some(PathBuf::from(path));
-    }
-    let mut found: Vec<PathBuf> = fs::read_dir(repo.join("vendor/rom"))
-        .ok()?
-        .flatten()
-        .map(|entry| entry.path())
+/// The `.nes` files of `vendor/rom/` and `vendor/`, in name order.
+fn vendor_roms(repo: &Path) -> Vec<PathBuf> {
+    let mut found: Vec<PathBuf> = ["vendor/rom", "vendor"]
+        .iter()
+        .filter_map(|dir| fs::read_dir(repo.join(dir)).ok())
+        .flat_map(|entries| entries.flatten().map(|entry| entry.path()))
         .filter(|path| {
             path.extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("nes"))
         })
         .collect();
     found.sort();
-    found.into_iter().next()
+    found
+}
+
+/// The release of the ROM file at `path`, if it is one we accept.
+fn release_of(path: &Path) -> Option<crate::rom::Release> {
+    let file = fs::read(path).ok()?;
+    crate::rom::Rom::from_nes_file(&file)
+        .ok()
+        .map(|rom| rom.release())
+}
+
+/// The ROM to use when none is given: `$SJ_ROM`, else the USA release among `vendor/rom/*.nes`
+/// and `vendor/*.nes` (the tools compare with the original running the USA release), else the
+/// first of those files.
+pub fn default_rom(repo: &Path) -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("SJ_ROM") {
+        return Some(PathBuf::from(path));
+    }
+    vendor_rom(repo, crate::rom::Release::Usa).or_else(|| vendor_roms(repo).into_iter().next())
+}
+
+/// The first of `vendor/rom/*.nes` and `vendor/*.nes` that is `release`.
+pub fn vendor_rom(repo: &Path, release: crate::rom::Release) -> Option<PathBuf> {
+    vendor_roms(repo)
+        .into_iter()
+        .find(|path| release_of(path) == Some(release))
 }
 
 /// Reads and checks a ROM: `path`, or the default one.
 pub fn load_rom(repo: &Path, path: Option<PathBuf>) -> Result<(PathBuf, crate::rom::Rom), String> {
     let path = path
         .or_else(|| default_rom(repo))
-        .ok_or("no ROM given, no $SJ_ROM and no vendor/rom/*.nes")?;
+        .ok_or("no ROM given, no $SJ_ROM and no vendor/rom/*.nes or vendor/*.nes")?;
     let file = fs::read(&path).map_err(|error| format!("{}: {error}", path.display()))?;
     let rom = crate::rom::Rom::from_nes_file(&file)
         .map_err(|error| format!("{}: {error}", path.display()))?;
@@ -75,7 +97,7 @@ pub fn test_rom() -> Option<&'static crate::rom::Rom> {
     ROM.get_or_init(|| {
         let repo = repo_root();
         if default_rom(&repo).is_none() {
-            eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/rom/)");
+            eprintln!("skipped: no ROM (set SJ_ROM or put the .nes file in vendor/)");
             return None;
         }
         Some(

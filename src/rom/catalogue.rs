@@ -55,7 +55,7 @@ impl Certainty {
 /// One blob of data in the PRG ROM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Blob {
-    /// PRG ROM offset (header excluded).
+    /// PRG ROM offset (header excluded) in the USA release.
     pub offset: u32,
     pub format: Format,
     /// Raw: bytes. Run-length: the compressed length `L`. Font: number of glyphs.
@@ -119,9 +119,14 @@ impl Blob {
         self.offset as usize + self.stored_bytes()
     }
 
+    /// Where the blob is in `rom` (its `offset` is the USA release's).
+    pub fn located(&self, rom: &Rom) -> usize {
+        rom.locate(self.offset as usize)
+    }
+
     /// The stored bytes, or `None` if the blob runs past the end of the ROM.
     pub fn stored<'a>(&self, rom: &'a Rom) -> Option<&'a [u8]> {
-        rom.bytes(self.offset as usize, self.stored_bytes())
+        rom.bytes(self.located(rom), self.stored_bytes())
     }
 
     /// The decoded bytes (tile bytes, or nametable / attribute bytes), or `None` if the blob

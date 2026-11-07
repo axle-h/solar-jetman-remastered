@@ -461,7 +461,7 @@ fn sound_decodes_and_reaches_all_its_data() {
         .iter()
         .enumerate()
         .filter(|(_, read)| !**read)
-        .map(|(i, _)| solar_jetman::rom::sound::at::DATA.0 + i)
+        .map(|(i, _)| solar_jetman::rom::sound::data_range(rom).0 + i)
         .collect();
     assert!(unread.is_empty(), "unread bytes at {unread:X?}");
     assert_eq!(sound.songs.len(), 34);

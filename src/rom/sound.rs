@@ -6,8 +6,9 @@
 //!
 //! # Pack files
 //!
-//! `sound/song-NN.ron`, one per song 0-33: a [`Song`] with the song's tempo and four tracks
-//! (pulse 1, pulse 2, triangle, noise). A track is a list of [`Event`]s read from index 0:
+//! `sound/song-NN.ron`, one per song 0-33: a [`Song`] with the song's tempo (for 60 Hz,
+//! [`tempo_at_60_hz`]) and four tracks (pulse 1, pulse 2, triangle, noise). A track is a list
+//! of [`Event`]s read from index 0:
 //!
 //! - `Note(key, ticks)`: the note byte less $80 (1-127, transposed when played) and its
 //!   duration in ticks (0 = 256). Durations are resolved here: the fixed-duration commands
@@ -31,10 +32,12 @@
 use crate::game::sound::data::{
     Effect, EffectStep, Event, LAST_EFFECT_ID, NOTE_PERIODS, RAM_EFFECT_ID, SONG_COUNT, Song, Track,
 };
-use crate::rom::cartridge::{Rom, bank_offset};
+use crate::rom::cartridge::{BANK_SIZE, Rom, bank_offset};
+use crate::rom::release::Release;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
-/// Where the sound tables and data are (sound.md 2), as PRG ROM offsets.
+/// Where the sound tables and data are (sound.md 2), as the USA release's PRG ROM offsets
+/// (read through [`Rom::locate`]).
 pub mod at {
     /// Tempo of each song: ripped.
     pub const TEMPOS: usize = 0x22320;
@@ -63,16 +66,22 @@ pub const RAM_EFFECT_BYTES: usize = 6;
 pub struct DecodedSound {
     pub songs: Vec<Song>,
     pub effects: Vec<Effect>,
-    /// One flag per byte of [`at::DATA`]: read by some song or effect.
+    /// One flag per byte of the data region ([`data_range`]): read by some song or effect.
     pub coverage: Vec<bool>,
+}
+
+/// Where the music and effect data ([`at::DATA`]) is in `rom`, start and exclusive end.
+pub fn data_range(rom: &Rom) -> (usize, usize) {
+    (rom.locate(at::DATA.0), rom.locate_end(at::DATA.1))
 }
 
 /// Decodes all songs and effects.
 pub fn decode(rom: &Rom) -> Result<DecodedSound, String> {
-    let mut coverage = vec![false; at::DATA.1 - at::DATA.0];
+    let data = data_range(rom);
+    let mut coverage = vec![false; data.1 - data.0];
     let mut songs = Vec::with_capacity(SONG_COUNT);
     for song in 0..SONG_COUNT {
-        let tempo = byte(rom, at::TEMPOS + song)?;
+        let tempo = tempo_at_60_hz(rom.release(), byte(rom, at::TEMPOS + song)?);
         let mut tracks = Vec::with_capacity(4);
         for channel in 0..4 {
             let index = song * 4 + channel;
@@ -93,16 +102,16 @@ pub fn decode(rom: &Rom) -> Result<DecodedSound, String> {
         let address = u16::from_le_bytes([byte(rom, pointer)?, byte(rom, pointer + 1)?]);
         let effect = if address == at::RAM_EFFECT_ADDRESS {
             let template = rom
-                .bytes(at::RAM_EFFECT_TEMPLATE, RAM_EFFECT_BYTES)
+                .bytes(rom.locate(at::RAM_EFFECT_TEMPLATE), RAM_EFFECT_BYTES)
                 .ok_or("the RAM effect template is past the end of the ROM")?;
             let mut effect = parse_effect(id, template, |_| {})?;
             effect.in_ram = true;
             effect
         } else {
-            let offset = data_offset(address)?;
-            let bytes = rom.prg().get(offset..at::DATA.1).unwrap_or_default();
+            let offset = data_offset(rom, address)?;
+            let bytes = rom.prg().get(offset..data.1).unwrap_or_default();
             parse_effect(id, bytes, |position| {
-                coverage[offset - at::DATA.0 + position] = true;
+                coverage[offset - data.0 + position] = true;
             })
             .map_err(|error| format!("effect ${id:02X} at ${address:04X}: {error}"))?
         };
@@ -125,10 +134,21 @@ pub fn decode(rom: &Rom) -> Result<DecodedSound, String> {
     })
 }
 
+/// A song's tempo for the 60 frames a second the driver runs at. The Europe release's tempos
+/// are the USA release's times 6/5, as a PAL console runs 50 frames a second (the tempo is added
+/// to an accumulator every frame, sound.md 6.1); they are brought back by 5/6, rounded. That
+/// gives the USA release's tempo for every song but song 14 (75 for 74).
+pub fn tempo_at_60_hz(release: Release, tempo: u8) -> u8 {
+    match release {
+        Release::Usa => tempo,
+        Release::Europe => ((u16::from(tempo) * 5 + 3) / 6) as u8,
+    }
+}
+
 /// The note period table (committed data).
 pub fn note_periods(rom: &Rom) -> Result<Vec<u16>, String> {
     let bytes = rom
-        .bytes(at::NOTE_PERIODS, 2 * NOTE_PERIODS)
+        .bytes(rom.locate(at::NOTE_PERIODS), 2 * NOTE_PERIODS)
         .ok_or("the note period table is past the end of the ROM")?;
     Ok(bytes
         .chunks(2)
@@ -136,17 +156,22 @@ pub fn note_periods(rom: &Rom) -> Result<Vec<u16>, String> {
         .collect())
 }
 
-fn byte(rom: &Rom, offset: usize) -> Result<u8, String> {
-    rom.byte(offset)
-        .ok_or_else(|| format!("ROM 0x{offset:05X} is past the end"))
+/// The byte of a table at the USA release's offset `usa`.
+fn byte(rom: &Rom, usa: usize) -> Result<u8, String> {
+    rom.byte(rom.locate(usa))
+        .ok_or_else(|| format!("ROM 0x{usa:05X} is past the end"))
 }
 
 /// The ROM offset of a bank 4 address inside the sound data region.
-fn data_offset(address: u16) -> Result<usize, String> {
+fn data_offset(rom: &Rom, address: u16) -> Result<usize, String> {
     let offset = bank_offset(at::BANK, address);
-    if address < 0x8000 || !(at::DATA.0..at::DATA.1).contains(&offset) {
+    let (start, end) = data_range(rom);
+    if address < 0x8000 || !(start..end).contains(&offset) {
+        let cpu = |offset: usize| 0x8000 + offset % BANK_SIZE;
         return Err(format!(
-            "${address:04X} is outside the sound data (bank 4 $AA17-$FE4B)"
+            "${address:04X} is outside the sound data (bank 4 ${:04X}-${:04X})",
+            cpu(start),
+            cpu(end - 1)
         ));
     }
     Ok(offset)
@@ -256,8 +281,8 @@ impl<'a> TrackDecoder<'a> {
     }
 
     fn read(&mut self, address: u16) -> Result<u8, String> {
-        let offset = data_offset(address)?;
-        self.coverage[offset - at::DATA.0] = true;
+        let offset = data_offset(self.rom, address)?;
+        self.coverage[offset - data_range(self.rom).0] = true;
         Ok(self.rom.prg()[offset])
     }
 
