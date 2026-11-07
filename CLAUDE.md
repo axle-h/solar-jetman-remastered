@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-A clean-room Rust re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warpship* (NES, USA, 1990), on SDL3. The player brings their own ROM. The repository is local for now and will be public.
+A clean-room Rust re-implementation of Rare's *Solar Jetman: Hunt for the Golden Warpship* (NES, USA, 1990), on SDL3. The player brings their own ROM. The repository is on GitHub, `axle-h/solar-jetman-remastered`.
 
 Read first: `docs/CLEAN_ROOM.md` (the rules), `docs/spec/` (what to implement from) and `docs/reference-environments.md` (running the original).
 
@@ -13,7 +13,7 @@ Read first: `docs/CLEAN_ROOM.md` (the rules), `docs/spec/` (what to implement fr
 - **Analysts** follow `~/projects/solar-jetman-dirty/README.md`, and write to this repository only in `docs/spec/`.
 - **No graphics or sound bytes of the ROM in git.** The remake's own art (the launch scene's widescreen sides, `docs/widescreen.md`) is ours and may be. `vendor/` (gitignored) holds the ROM, Mesen and its private config. Tests use synthetic data; ROM tests read `vendor/` (or `$SJ_ROM`) and skip without it.
 - **The ROM is data, never code** in the remake: no 6502 emulation.
-- **Git is read-only** unless Alex explicitly asks: no commit, reset, rebase, push. Don't push to GitHub.
+- **Git is read-only** unless Alex explicitly asks: no commit, reset, rebase, push.
 - **Mesen never opens a window.** Run it only through `tools/mesen/run.sh` (no display, private config). Never launch `vendor/Mesen` directly. Kill only processes you started: `ps -eo pid,args | grep -i '[m]esen --'`.
 - **Check with Alex** before changing scope or an established design decision.
 
