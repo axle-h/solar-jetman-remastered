@@ -132,6 +132,10 @@ pub struct Screen {
     /// Art of the remake's own beside the screen in a wider frame, and over a few of the
     /// picture's pixels (`docs/widescreen.md`): the launch scene's 16:9 sides. Beyond it, black.
     pub side_art: Option<SideArt>,
+    /// Cells beside the screen in a wider frame, copied from the picture's own
+    /// (`docs/widescreen.md`): the planet surface's sides. Under side art, over the backdrop.
+    #[serde(default)]
+    pub side_cells: Option<SideCells>,
 }
 
 /// First line of the blank gap above the status panel and the panel's first line.
@@ -174,6 +178,7 @@ impl Default for Screen {
             roam: None,
             side_field: None,
             side_art: None,
+            side_cells: None,
         }
     }
 }
@@ -197,6 +202,16 @@ impl Screen {
     pub fn sprite_tiles(&self) -> &PatternTable {
         self.sprite_tiles
             .get_or_init(|| self.chr.pattern_table(self.sprite_table))
+    }
+
+    /// The background's pattern table `table`: the one above the split or the one below it.
+    fn tiles_of(&self, table: usize) -> &PatternTable {
+        match self.split {
+            Some((_, below)) if below == table && table != self.background_table => {
+                self.split_background_tiles()
+            }
+            _ => self.background_tiles(),
+        }
     }
 
     fn split_background_tiles(&self) -> &PatternTable {
@@ -370,6 +385,11 @@ impl Screen {
         for sprite in self.sprites.iter().chain(side) {
             self.stamp(sprite, &mut sprite_layer, width, origin);
         }
+        // The page's cells a wider frame shows otherwise, if any.
+        let page_cells = self
+            .side_cells
+            .as_ref()
+            .filter(|cells| wide && cells.changes_the_page());
         // The background's colour numbers (0-3) where sprites may show, for the solid scenery.
         let mut values = self.solid_behind.then(|| vec![0u8; width * SCREEN_HEIGHT]);
         for y in 0..SCREEN_HEIGHT {
@@ -445,6 +465,32 @@ impl Screen {
                     frame_x.checked_sub(origin).filter(|&x| x < SCREEN_WIDTH)
                 };
                 let Some(x) = x else {
+                    let side_cell = self
+                        .side_cells
+                        .as_ref()
+                        .filter(|_| !in_panel && band.is_none() && roam.is_none())
+                        .and_then(|cells| {
+                            let column = (frame_x as i32 - origin as i32).div_euclid(8);
+                            cells.cell(column, tile_row)
+                        });
+                    if let Some(cell) = side_cell {
+                        // A cell of the picture's own beside it, in front of sprites behind
+                        // the background as the picture is.
+                        let fine_x = (frame_x as i32 - origin as i32).rem_euclid(8) as usize;
+                        let fine_x = if cell.flip_x { 7 - fine_x } else { fine_x };
+                        let value = self
+                            .tiles_of(usize::from(cell.table))
+                            .row(cell.tile, fine_y as u32)[fine_x];
+                        let value = if self.show_background { value } else { 0 };
+                        frame.pixels[i] = self.palette.background(cell.palette, value);
+                        if let Some(values) = values.as_mut() {
+                            values[i] = value;
+                        }
+                        if sprite_layer[i] & 0x100 != 0 && value != 0 {
+                            sprite_layer[i] = 0;
+                        }
+                        continue;
+                    }
                     // Beside the screen: the backdrop or a side star, under the sprites.
                     let star = self
                         .side_field
@@ -504,8 +550,23 @@ impl Screen {
                         fine_y,
                     )
                 };
-                let value = tiles.row(tile, fine_y as u32)[fine_x];
-                let masked = self.blank_left && x < 8 && roam.is_none() && art.is_none();
+                // A wider frame may show some of the page's cells otherwise.
+                let replaced = page_cells
+                    .filter(|_| !in_panel && band.is_none() && roam.is_none())
+                    .and_then(|cells| {
+                        let page_x = (x + scroll.0) % SCREEN_WIDTH;
+                        cells.cell((page_x / 8) as i32, tile_row)
+                    });
+                let (palette, value) = match replaced {
+                    Some(cell) => {
+                        let fine_x = if cell.flip_x { 7 - fine_x } else { fine_x };
+                        let tiles = self.tiles_of(usize::from(cell.table));
+                        (cell.palette, tiles.row(cell.tile, fine_y as u32)[fine_x])
+                    }
+                    None => (palette, tiles.row(tile, fine_y as u32)[fine_x]),
+                };
+                let sides = wide && self.side_cells.is_some();
+                let masked = self.blank_left && x < 8 && roam.is_none() && art.is_none() && !sides;
                 let value = if masked || !self.show_background {
                     0
                 } else {
@@ -635,6 +696,89 @@ fn cell_hash(column: i32, row: usize) -> u32 {
     h ^= h >> 15;
     h = h.wrapping_mul(0x846C_A68B);
     h ^ h >> 16
+}
+
+/// Cells beside the screen in a wider frame (`docs/widescreen.md`): `columns` either side of
+/// the 32, each a tile of the screen's pattern tables or nothing (the backdrop); and cells of
+/// the page itself that a wider frame shows otherwise.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SideCells {
+    pub columns: usize,
+    /// Row by row, [`ROWS`] rows of the left side's `columns` cells then the right side's.
+    pub cells: Vec<Option<SideCell>>,
+    /// Row by row, the page's 32 × 30 cells shown in their place in a wider frame (empty when
+    /// none are).
+    #[serde(default)]
+    pub inside: Vec<Option<SideCell>>,
+}
+
+/// A cell beside the screen: a tile of background pattern table `table`, its palette, and
+/// whether it is mirrored left to right.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SideCell {
+    pub tile: u8,
+    pub palette: u8,
+    pub table: u8,
+    pub flip_x: bool,
+}
+
+impl SideCells {
+    /// Empty sides, `columns` wide.
+    pub fn new(columns: usize) -> SideCells {
+        SideCells {
+            columns,
+            cells: vec![None; ROWS * 2 * columns],
+            inside: Vec::new(),
+        }
+    }
+
+    /// Where side cell (`column`, `row`) is kept, the column counted from the screen's left
+    /// edge (negative to its left, 32 on to its right).
+    fn index(&self, column: i32, row: usize) -> Option<usize> {
+        let columns = self.columns as i32;
+        let side = if (-columns..0).contains(&column) {
+            column + columns
+        } else if (COLUMNS as i32..COLUMNS as i32 + columns).contains(&column) {
+            column - COLUMNS as i32 + columns
+        } else {
+            return None;
+        };
+        (row < ROWS).then(|| row * 2 * self.columns + side as usize)
+    }
+
+    /// Side cell (`column`, `row`), or the cell a wider frame shows in the page's place.
+    pub fn cell(&self, column: i32, row: usize) -> Option<SideCell> {
+        if let Some(at) = inside_index(column, row) {
+            return self.inside.get(at).copied().flatten();
+        }
+        self.index(column, row).and_then(|at| self.cells[at])
+    }
+
+    /// Sets side cell (`column`, `row`), or for a column of the page the cell a wider frame
+    /// shows in its place; beyond the sides nothing changes.
+    pub fn set(&mut self, column: i32, row: usize, cell: Option<SideCell>) {
+        if let Some(at) = inside_index(column, row) {
+            if self.inside.is_empty() {
+                self.inside = vec![None; COLUMNS * ROWS];
+            }
+            self.inside[at] = cell;
+        } else if let Some(at) = self.index(column, row) {
+            self.cells[at] = cell;
+        }
+    }
+}
+
+/// Where a cell of the page is kept in [`SideCells::inside`].
+fn inside_index(column: i32, row: usize) -> Option<usize> {
+    let column = usize::try_from(column).ok().filter(|&c| c < COLUMNS)?;
+    (row < ROWS).then_some(row * COLUMNS + column)
+}
+
+impl SideCells {
+    /// Whether a wider frame shows any of the page's cells otherwise.
+    fn changes_the_page(&self) -> bool {
+        self.inside.iter().any(Option::is_some)
+    }
 }
 
 /// Art of the remake's own for a wider frame (`docs/widescreen.md`), by scene. A screen keeps
@@ -961,6 +1105,56 @@ mod tests {
         screen.draw(&mut wide);
         let (palette, value) = SideArt::Launch.pixels().at(-85, 0).unwrap();
         assert_eq!(wide.pixel(0, 0), screen.palette.background(palette, value));
+    }
+
+    #[test]
+    fn side_cells_show_beside_the_screen_only_in_a_wider_frame() {
+        let mut screen = screen();
+        screen.set_tile(0, 0, 1);
+        screen.blank_left = true;
+        // Table 1 above line 8, table 0 from it.
+        screen.split = Some((8, 0));
+        screen.refresh();
+        let cell = |table| {
+            Some(SideCell {
+                tile: 1,
+                palette: 2,
+                table,
+                flip_x: false,
+            })
+        };
+        let mut cells = SideCells::new(2);
+        cells.set(-1, 0, cell(1));
+        cells.set(32, 1, cell(0));
+        screen.side_cells = Some(cells);
+        let mut behind = Sprite::new(-8, 0, 1, 1);
+        behind.behind = true;
+        screen.sprites = vec![behind];
+        // On the original's width nothing changes: the left column stays masked.
+        let mut frame = Frame::default();
+        screen.draw(&mut frame);
+        assert_eq!(frame.pixel(0, 0), 0x0F);
+        // 288 wide: the screen from x 16. Cell −1 is table 1's tile (colour 1 of palette 2)
+        // and hides the sprite behind it; cell 32 of row 1 is table 0's (colour 2).
+        let mut wide = Frame::new(288);
+        screen.draw(&mut wide);
+        assert_eq!(wide.pixel(10, 0), 0x10 + 8 + 1);
+        assert_eq!(wide.pixel(272, 8), 0x10 + 8 + 2);
+        assert_eq!(wide.pixel(2, 0), 0x0F);
+        // Column 0 is shown.
+        assert_eq!(wide.pixel(16, 0), 0x11);
+        // A cell of the page shown otherwise: only in the wider frame.
+        let mut cells = screen.side_cells.take().unwrap();
+        cells.set(0, 0, cell(0));
+        screen.side_cells = Some(cells);
+        let mut frame = Frame::default();
+        screen.draw(&mut frame);
+        assert_eq!(frame.pixel(8, 0), 0x0F);
+        screen.blank_left = false;
+        screen.draw(&mut frame);
+        assert_eq!(frame.pixel(0, 0), 0x11);
+        screen.draw(&mut wide);
+        assert_eq!(wide.pixel(16, 0), 0x10 + 8 + 2);
     }
 
     #[test]

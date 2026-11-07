@@ -17,6 +17,12 @@ A port-menu option, VIDEO > ASPECT, that widens the field of view: the frame gro
 - **The title's Jetman crosses the whole frame** at the original's speed, so the menu lasts longer when wide. **The story's picture drifts round the whole frame.**
 - **The launch scene** gets side art for 16:9, drawn for the remake from the picture's own elements and committed as our own derivative work; wider frames show black beyond it.
 
+## Decisions (Alex, 2026-11-07)
+
+- **Surface pictures** are widened one at a time from their own cells, as planned below. Picture 1: the floe pair moved from the picture's right to just beyond it, the small floe on the left (chosen over sparser layouts and over the pair on the left).
+- **The mothership enters from the side of the widened picture**, not at screen x 255 over the right side's art.
+- **The landing fits its song.** In a wider frame the descent is time-scaled per picture so that the landing and the launch after it last exactly as long as song 3, which then ends as play begins; the launch itself is not changed. The speed is in passes, so the same at any display rate. (Chosen over extra time before the descent, with the song starting at once or delayed; extending the song was considered.)
+
 ## The view (`src/game/view.rs`)
 
 - **Width.** The height stays 240 lines (224 shown with `crop_overscan`). Width W = round(lines shown × display aspect), held to 256-854 (854 is 32:9 at 240 lines).
@@ -39,6 +45,7 @@ The analyst audit of 2026-10-25 lists every rule the original measures against t
 | Objects drawn when −32 ≤ rx < 288, and each sprite only within the screen | up to W + 32; sprites within the frame |
 | Level 26: pod kept within x 24-232 of the camera (`player.md` 9.1) | within 24 of the view's sides |
 | Level 26 types 59-5D wait, invisible, until rx ≤ 0 (`behaviour.md` 4.16) | until they reach the view's left edge |
+| Surface descent: the mothership starts at x 255 (`scenes.md` 8.2) | drawn coming in from beyond the frame's right edge, the descent time-scaled to its song (below) |
 
 Vertical bounds are unchanged. Rules tied to the world or to a fixed picture stay: the camera's follow band and start, the level 26 camera-page triggers, the delivery's item place on the message screen (camera + 130, on the original's screen in the middle) and the backdrop interlude's 256-wide walls.
 
@@ -51,11 +58,35 @@ Vertical bounds are unchanged. Rules tied to the world or to a fixed picture sta
 - **Title Jetman.** With L and R columns beside the screen, his flight starts 4L frames earlier at the frame's left edge and his jetpack works throughout: the homing swing of `scenes.md` 2.3 runs from his start, with the high target's window moved 4L frames later so his long climb comes over the same part of the screen as in the original. He flies on to the right edge, still swinging. The menu lasts 994 + 4(L + R) frames.
 - **Story.** `Screen::roam`: the page goes round a loop W + 128 wide, so the 128-wide picture leaves one side as it comes in at the other; no left-column mask. Its x is the scroll moved by whole pages so that from clock 600, when the scroll stays still, the picture rests where the original's screen has it (x 64-191 of the screen): the rocket blows up in the middle.
 - **Launch.** `Screen::side_art`: the remake's own art for 16:9 (drawn 2026-11-06 after a reference Alex chose, in the picture's palettes 0 and 2), `src/game/scene/launch-sides.png`. It covers screen x −88 to 343, so all of a 16:9 frame (−85 to 341) and of narrower wide ones; beyond it, black. Machinery walls either side (one layout, mirrored; lit from the left like the picture's pillars); on the left the box carried on (its back edge continuing the picture's at x 0, parallel to its front edge, the front edge bent gently downward from the box's corner at x 56, a dithered rounded front and two curved grooves); on the right the monitor completed about its circle (centre (255, 175), radius 23.6, fitted to the picture's arc), a vented unit and a floor, and the tennis ball's seam carried on, bending only upward. It also repaints 269 of the picture's own pixels (the front edge from x 56, the seam from x 239) and unmasks the left column. The PNG is 8-bit indexed: index = palette × 4 + colour value, 16 where the picture shows; its colours are only for viewing. Sprites behind the background are hidden by the art as by the picture. At 256 nothing changes.
+- **Surface.** `Screen::side_cells`, built by `scene/surface_sides.rs` from a recipe per picture (plan below): 11 columns either side, each cell a tile of the picture's nametable as loaded with its palette and pattern table (rows 0-15 table 1, 16-29 table 0, as the split gives them), mirrored or not. Beyond them the backdrop. Side cells hide sprites behind the background as the picture does, and a wider frame unmasks column 0. A recipe may also replace cells of the picture itself, in a wider frame only (`SideCells::inside`), away from the menu box (rows 4-15, columns 10-21), which the replaced cells would hide. Pictures without a recipe yet show the backdrop either side.
+  - **Picture 1** (ice floes, planets 4 and 7): each row's most common cell as the ground. Left: the distant range of columns 0-7 again (rows 10-15; column 8 is much like column 0, so column 7 sits beside column 0 as beside column 8), without the tiny shard of columns 0-1 and the big left floe's top (column 4) in row 15; the small floe (columns 28-31, rows 18-22, without its neighbour's drips) two rows lower. Right: the picture's right end again (columns 21-31 at 32-42, rows 10-23): the distant mountain and ridges, the pair of floes in front and their drips, but not the big centre floe's edge (column 21 from row 15, column 22 from row 16). In the picture itself (`SideCells::inside`, a wider frame only), the pair gives way to each row's common cell, open ice, so it shows once, beyond the edge: columns 25-31 in rows 13-15, beside the distant mountain the tall floe stood in front of (kept whole in columns 22-24 with its shaded face), and columns 24-31 in rows 16-23.
 - **Approach.** `Screen::side_field`: each cell beside the field's 24 rows holds one of the field's star tiles (from the picture before any text) with the field's density × 1.2, chosen by a hash of the cell, and none next to a star on its left or above.
+
+## Surface pictures (plan, 2026-11-07)
+
+The planet surface (`scenes.md` 8) shows one of six pictures (0, 1, 2, 4, 5, 6; picture 3 is empty) in the planet's own colours. The plan is to widen each one picture at a time, in the order below. Mock-ups of every picture were made first, from the picture's own cells.
+
+**Method.** The sides are built mostly from the picture's own 8 × 8 cells: copied, or mirrored, from its nametable as loaded, before the menu box is drawn. A short recipe per picture, written by us, says which cell goes where. Because a cell keeps its tile and palette number, the sides take each planet's colours by themselves, and no graphics of the ROM go into git. Where copying leaves a seam that only drawing can hide, a small indexed PNG of our own goes over the cells, in the picture's palettes, as with the launch scene's art. The sides cover 16:9 (11 columns either side); wider frames show the backdrop beyond them. They take part in sprite priority like the picture, so a ship behind the background is hidden by them too. Column 0, masked on the original, is shown when the frame is wider. At 256 nothing changes.
+
+| Order | Picture (planets) | What copies well | What needs drawing |
+|---|---|---|---|
+| 1 (done) | 1, ice floes (4, 7) | the horizontal bands of sky and distant ridges; the floe pair moved from the picture's right to just beyond it, the small floe again on the left | nothing |
+| 2 | 6, rock towers (1) | the flat sky and black ground; the pink spires; the boulders | a cloned boulder beside its original is easy to spot: change one |
+| 3 | 5, crystals (2, 9) | the sky bands; the dark bush mirrored into a whole bush; the dithered grass strips | the mirror line of the gold crystal cluster at x 0 |
+| 4 | 2, canyon and sun (5, 8, 10) | the sky bands | both canyon walls (repeated spires show a rhythm): a black silhouette with a lit edge, the left wall climbing toward the top, the right one rising off the top |
+| 5 | 4, river and tree (0, 6) | the trunk and canopy mirrored into a whole tree; the left mesa mirrored; the grass and ledges; sky stars | the river's shoreline at the left, the grass seams on the right. The ship is behind the background from x 216, so behind the new trunk too |
+| 6 | 0, alien trees (3, 11, 12) | the horizon and far dunes; the small tree again on the right; the plateau's end mirrored on the left | the right side's plateau rim and pink foliage, the left ridge's mirror seam, the cloned tree's trunk base |
+
+**The mothership's landing** (`Surface::enter_from_the_edge`), in a frame with R > 0 columns right of the screen:
+
+- **Entry.** The mothership moves as on the original, from x 255, but is drawn further right by a lead of R + 32 px (past its widest layout) that shrinks with the square of the passes left, to nothing at the pass the original's braking starts (the 8-bit distance before the move first below 37). It flies in faster and has slowed to the original's 0.75 px a pass by then.
+- **Time scale.** The original's landing with nothing owned (descent, arrival, the small object's 128 passes) takes D passes, and the launch after it L = 358 passes, or 357 when it opens on an odd frame counter (`scenes.md` 9). The remake plays those D passes in 1,077 − L (song 3's length, `scenes.md` 15), so the level's song is asked for exactly 1,077 passes after song 3: D = 431 to 755 becomes 719 or 720. Each pass owes D / (1,077 − L) of the original's (an integer accumulator: none, one or two run in a pass, each with the frame counter's increment), so the frame counter at the launch is the original's and the launch is the original's pass for pass. Buttons pressed in a pass that runs none wait for the next (A still ends the descent at once). The mothership, its flame and the small object are drawn on their way between the original's last two passes, by the accumulator's fraction, so a slowed descent moves smoothly. With something owned the descent runs at the same speed and ends at its arrival as on the original.
+- **Any display rate.** The program runs passes 60 a second on its own clock whatever the display's rate (30 Hz draws two passes a frame, 120 Hz each pass twice), and the scale counts passes, so the landing takes the same time at any rate.
+- A width set after the landing has opened but before its first pass sets the lead and scale too (and moves the sprites already placed). The docked menu and the departure are unchanged; at 256 nothing changes.
 
 ## Tools
 
-`sj-tools render` and `sj-tools scene` take `--aspect W:H` (16:9, 21:9, ...). `scene --compare` refuses it.
+`sj-tools render` and `sj-tools scene` take `--aspect W:H` (16:9, 21:9, ...). `scene --compare` refuses it. `sj-tools scene --frames` takes ranges (`530-1420/2`), and `--animate FILE.png` writes the frames as one animated PNG to watch in a browser (`--scale N` draws each pixel N × N), e.g. `sj-tools scene --surface 4 --aspect 16:9 --frames 530-1420/2 --animate landing.png --scale 3`.
 
 ## Open
 

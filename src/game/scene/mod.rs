@@ -23,6 +23,7 @@ pub mod shop;
 pub mod story;
 pub mod strings;
 pub mod surface;
+pub mod surface_sides;
 pub mod title;
 
 use crate::game::gameplay::economy::{Outcome, Transition};
@@ -992,6 +993,7 @@ impl Game {
             self.nothing_owned(),
         )?;
         surface.original_rules = self.original_rules;
+        surface.enter_from_the_edge(usize::from(self.view_width));
         surface.show(&assets.layouts);
         self.clock.counter = 0;
         self.sound.extend(surface.take_song());
@@ -1572,8 +1574,12 @@ impl Game {
     /// original's, by default. The scene under way follows it at once.
     pub fn set_view_width(&mut self, width: u16) {
         self.view_width = crate::game::view::clamp_width(width);
-        if let Scene::Title(title) = &mut self.scene {
-            title.set_view_width(self.view_width);
+        match &mut self.scene {
+            Scene::Title(title) => title.set_view_width(self.view_width),
+            Scene::Surface(scene) => scene
+                .surface
+                .enter_from_the_edge(usize::from(self.view_width)),
+            _ => {}
         }
         self.sync_cheats();
     }

@@ -2,6 +2,7 @@
 //! gameplay. Skips without a ROM.
 
 use solar_jetman::game::gameplay::input::Buttons;
+use solar_jetman::game::playfield::Frame;
 use solar_jetman::game::scene::{Assets, Game, SoundRequest, Start};
 
 fn assets() -> Option<Assets> {
@@ -666,6 +667,84 @@ fn the_landing_follows_the_validation_mode() {
     assert!(flame_moved < original.len(), "the ship itself does not lag");
 }
 
+/// On picture 1 (planet 4) the original switches the mothership off as it lands, and six
+/// invisible sprites cut holes in it as it comes down; the remake keeps it parked and whole
+/// while the small object rises (`docs/deviations.md`).
+#[test]
+fn the_mothership_stays_parked_and_whole_on_picture_1_but_in_the_validation_mode() {
+    let Some(assets) = assets() else { return };
+    let sprites = |original: bool| {
+        let start = Start::Surface {
+            level: 4,
+            dock: false,
+            owned: false,
+            flag: false,
+            clear: false,
+        };
+        let mut game = Game::with_rules(&assets, start, original).unwrap();
+        // The mothership lands at pass 629; the descent ends 128 passes later.
+        idle(&mut game, &assets, 680);
+        assert_eq!(game.scene_name(), "surface");
+        game.current_screen().unwrap().sprites.clone()
+    };
+    // The original: the six fixed sprites and the rising object.
+    let original = sprites(true);
+    assert_eq!(original.len(), 7);
+    assert_eq!(original.iter().filter(|s| s.behind).count(), 6);
+    // The remake: the mothership (two sprites, in front) at its place, and the rising object.
+    let remake = sprites(false);
+    assert_eq!(remake.len(), 3);
+    assert!(remake.iter().all(|s| !s.behind));
+    assert_eq!(
+        remake
+            .iter()
+            .filter(|s| s.palette == 0 && (80..100).contains(&s.x))
+            .count(),
+        2
+    );
+    // The small object rises over the middle of the mothership (its sprites at x 83 and 91,
+    // the object's 2-pixel dot at the left of its tile): x 90, not the original's 94.
+    let pod = |sprites: &[solar_jetman::game::scene::ppu::Sprite]| {
+        sprites.iter().find(|s| s.tile == 0xA6).map(|s| s.x)
+    };
+    assert_eq!(pod(&remake), Some(90));
+    assert_eq!(pod(&original), Some(94));
+}
+
+/// On pictures 1, 5 and 6 the original flies the mothership in at line 0 and drops it to line
+/// 16 as it starts braking; the remake shows it at line 16 all along, moving as the original.
+#[test]
+fn the_mothership_flies_in_at_line_16() {
+    let Some(assets) = assets() else { return };
+    // The top of the mothership's sprites after `passes` passes on planet 4 (picture 1).
+    let top = |original: bool, passes: u32| {
+        let start = Start::Surface {
+            level: 4,
+            dock: false,
+            owned: true,
+            flag: false,
+            clear: false,
+        };
+        let mut game = Game::with_rules(&assets, start, original).unwrap();
+        idle(&mut game, &assets, passes);
+        let screen = game.current_screen().unwrap();
+        screen
+            .sprites
+            .iter()
+            .filter(|s| s.palette == 0)
+            .map(|s| s.y)
+            .min()
+    };
+    // Before the braking (pass 175) the original's is at the top of the screen, the remake's
+    // where the original's drops to; after it, the two agree.
+    let (original, remake) = (top(true, 100).unwrap(), top(false, 100).unwrap());
+    assert!(
+        original < 4 && remake == original + 16,
+        "{original} {remake}"
+    );
+    assert_eq!(top(true, 200), top(false, 200));
+}
+
 /// The backdrop interlude: 2,048 steps from the star marker's request (scenes.md 11.1), then the
 /// badge intermission (11.2: 359 frames from the handler's start, the first of which is not a
 /// pass), then the level again.
@@ -925,6 +1004,107 @@ fn a_button_ends_the_attract_demo() {
             demo(&assets, 0, scaled, Some(300)),
             (300, "title"),
             "scaled {scaled}"
+        );
+    }
+}
+
+/// In a 16:9 view the planet surface shows its sides (`docs/widescreen.md`): on planet 4
+/// (picture 1) the pair of floes at the picture's right again just beyond it, cell for cell as
+/// the original's screen shows them, open ice where they stood in the picture, and the open ice
+/// either side.
+#[test]
+fn a_wide_view_shows_the_surface_pictures_sides() {
+    let Some(assets) = assets() else { return };
+    let draw = |width: u16| {
+        let mut game = Game::new(&assets, Start::Approach(4)).unwrap();
+        game.set_view_width(width);
+        tap(&mut game, &assets, Buttons::START);
+        assert_eq!(game.scene_name(), "surface");
+        idle(&mut game, &assets, 5);
+        let mut frame = Frame::new(usize::from(width));
+        game.draw(&mut frame, &assets, 1.0);
+        frame
+    };
+    let (wide, original) = (draw(427), draw(256));
+    // The picture's left edge is at x 85 of the wide frame; rows start 2 lines up (the scroll).
+    let x = |column: i32, dx: i32| (85 + 8 * column + dx) as usize;
+    for row in 13..23 {
+        for line in row * 8 - 2..row * 8 + 6 {
+            // Columns 23-31 at 34-42 (the frame ends inside column 42).
+            for column in 34..42 {
+                for dx in 0..8 {
+                    assert_eq!(
+                        wide.pixel(x(column, dx), line),
+                        original.pixel((8 * (column - 11) + dx) as usize, line),
+                        "side cell ({column}, {row})"
+                    );
+                }
+            }
+        }
+    }
+    let ice = wide.pixel(x(16, 0), 225);
+    assert!((0..427).all(|x| wide.pixel(x, 225) == ice));
+    // Where the pair stood, open ice in the wide frame only.
+    assert!((136..184).all(|y| (x(24, 0)..x(32, 0)).all(|x| wide.pixel(x, y) == ice)));
+    assert!((136..184).any(|y| (192..256).any(|x| original.pixel(x, y) != ice)));
+}
+
+/// In a 16:9 view the landing (`docs/widescreen.md`): the mothership comes in from beyond the
+/// frame's right edge, and the descent is played at the speed that makes the landing and the
+/// launch last exactly as long as the descent's song (1,077 passes from song 3 to the level's
+/// song), on every picture. The launch is the original's, pass for pass.
+#[test]
+fn a_wide_landing_lasts_as_long_as_its_song() {
+    let Some(assets) = assets() else { return };
+    // The passes from the descent's song to the level's, and the launch's sprites by pass.
+    let run = |planet: usize, width: u16| {
+        let mut game = Game::new(&assets, Start::Approach(planet)).unwrap();
+        game.set_view_width(width);
+        game.take_sound();
+        // Start opens the surface in this pass, which asks for the descent's song.
+        pass(&mut game, &assets, Buttons::START);
+        // Where the mothership's sprites start (picture 1 has six fixed ones besides: none
+        // under the remake's rules).
+        let first: Vec<i32> = game
+            .current_screen()
+            .unwrap()
+            .sprites
+            .iter()
+            .map(|s| s.x)
+            .collect();
+        let (mut song, mut level_song, mut launch) = (None, None, Vec::new());
+        for n in 0..2000 {
+            if game.scene_name() == "launch" {
+                launch.push(game.current_screen().unwrap().sprites.clone());
+            }
+            for request in game.take_sound() {
+                match request {
+                    SoundRequest::SongIfNew(3) => song = song.or(Some(n)),
+                    SoundRequest::SongIfNew(_) if song.is_some() => level_song = Some(n),
+                    _ => {}
+                }
+            }
+            if level_song.is_some() {
+                break;
+            }
+            pass(&mut game, &assets, 0);
+        }
+        (first, level_song.unwrap() - song.unwrap(), launch)
+    };
+    for planet in 0..6 {
+        let (first, wide, wide_launch) = run(planet, 427);
+        let (_, original, original_launch) = run(planet, 256);
+        assert_eq!(wide, 1077, "planet {planet}");
+        assert_ne!(
+            original, 1077,
+            "planet {planet} fits the song on the original already"
+        );
+        assert_eq!(wide_launch, original_launch, "planet {planet}");
+        // Before the first pass the mothership is beyond the frame, which shows screen x
+        // −85 to 341.
+        assert!(
+            !first.is_empty() && first.iter().all(|&x| x > 341),
+            "planet {planet}"
         );
     }
 }

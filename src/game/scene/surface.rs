@@ -6,7 +6,6 @@
 use super::ppu::{Screen, Sprite};
 use super::strings::{MENU_LAYOUTS, MENU_OPTIONS, MENU_RECORDS};
 use super::{Clock, FONT_LOADS};
-use crate::game::SCREEN_HEIGHT;
 use crate::game::gameplay::input::Buttons;
 use crate::game::gameplay::sprites::piece_left;
 use crate::game::gameplay::sprites::{Piece, SpriteFile};
@@ -14,6 +13,7 @@ use crate::game::graphics::{
     ChrLoad, Graphics, MissingGraphics, TILE_BYTES, gameplay_background_loads, gameplay_palette,
 };
 use crate::game::level::Level;
+use crate::game::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 /// The picture of each planet (scenes.md 8.1).
 const PICTURE_OF_PLANET: [u8; 13] = [4, 6, 5, 0, 1, 2, 4, 1, 2, 5, 2, 0, 0];
@@ -65,6 +65,19 @@ const CURSOR_Y: [i32; 3] = [49, 65, 89];
 /// The menu box's top-left cell and its twelve columns.
 const BOX_COLUMN: usize = 10;
 const BOX_ROW: usize = 4;
+/// The highest line of the mothership in the descent: the line-16 rule (scenes.md 8.2).
+const DESCENT_TOP: i32 = 16;
+/// The descent's song (scenes.md 15).
+const DESCENT_SONG: u8 = 3;
+/// How long the descent's song plays, in passes (scenes.md 15: once, 1,077 frames).
+const DESCENT_SONG_PASSES: u32 = 1077;
+/// Where the mothership starts its descent (scenes.md 8.2).
+const LANDING_START_X: i32 = 255;
+/// How far beyond the frame's right edge the mothership starts in a wider frame: past its
+/// widest layout's reach left of its point.
+const ENTRY_MARGIN: i32 = 32;
+/// The distance at which the descent's braking starts (scenes.md 8.2).
+const BRAKING_DISTANCE: i32 = 37;
 /// Passes the automatic departure waits before the mothership moves.
 const AUTOMATIC_IDLE_PASSES: u32 = 1;
 /// The background palette of the box's cells.
@@ -130,6 +143,15 @@ struct Ship {
     exhaust_at: (i32, i32),
 }
 
+/// Where the descent's objects are drawn, in 1/256 px: the mothership (with its lead), its
+/// flame, and the small object's y.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct Drawn {
+    ship: (i32, i32),
+    flame: Option<(i32, i32)>,
+    pod_y: Option<i32>,
+}
+
 /// The small object that rises from the mothership when it has landed with nothing aboard.
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 struct Pod {
@@ -165,6 +187,28 @@ pub struct Surface {
     skip: Option<u32>,
     /// A song to start, taken by the caller.
     song: Option<u8>,
+    /// In a wider frame, how far right of its place the mothership is drawn before the
+    /// descent's first pass (1/256 px), and the pass from which it is drawn at its place
+    /// (`enter_from_the_edge`).
+    #[serde(default)]
+    lead: i32,
+    #[serde(default)]
+    lead_passes: u32,
+    /// In a wider frame, the descent's time scale (`enter_from_the_edge`): `.0` of the
+    /// original's passes in `.1` passes, so that the landing and the launch after it last as
+    /// long as the descent's song.
+    #[serde(default)]
+    scale: Option<(u32, u32)>,
+    /// The scaled descent's progress: the original's passes owed, times `scale.1`.
+    #[serde(default)]
+    scale_owed: u32,
+    /// Buttons pressed in passes in which the scaled descent ran none of the original's.
+    #[serde(default)]
+    scale_held: u8,
+    /// Where the mothership, its flame and the small object were drawn before the original's
+    /// last pass, to draw them on their way between two of its passes.
+    #[serde(default)]
+    before: Option<Drawn>,
     /// The mothership leaves at once on entering the menu mode (game-flow.md 7.3): the first
     /// passes only prepare it.
     automatic: bool,
@@ -264,6 +308,7 @@ impl Surface {
         screen.scroll = (0, 2);
         screen.blank_left = true;
         screen.blank_left_sprites = true;
+        screen.side_cells = super::surface_sides::side_cells(picture, &page, &picture_attributes);
         screen.refresh();
         let (tx, ty) = (i32::from(REST_X[picture]), i32::from(REST_Y[picture]));
         Ok(Surface {
@@ -290,6 +335,12 @@ impl Surface {
             wipe_row: 0,
             skip: None,
             song: None,
+            lead: 0,
+            lead_passes: 0,
+            scale: None,
+            scale_owed: 0,
+            scale_held: 0,
+            before: None,
             automatic: false,
             original_rules: false,
         })
@@ -307,7 +358,7 @@ impl Surface {
         let mut surface = Surface::build(graphics, world_level, level, previous, nothing_owned)?;
         let picture = surface.picture;
         surface.ship = Ship {
-            x: 255 << 8,
+            x: LANDING_START_X << 8,
             y: i32::from(START_Y[picture]) << 8,
             x_speed: 0xC0,
             y_speed: if picture == 1 { 0x80 } else { 0 },
@@ -315,8 +366,137 @@ impl Surface {
             exhaust: None,
             exhaust_at: (0, 0),
         };
-        surface.song = Some(3);
+        surface.song = Some(DESCENT_SONG);
         Ok(surface)
+    }
+
+    /// Picture 1's six fixed sprites: invisible behind the scenery, they only cut holes in the
+    /// mothership and the small object that come after them in the sprite list. The remake
+    /// leaves them out (`docs/deviations.md`, "Picture 1's vanishing mothership").
+    fn has_masks(&self) -> bool {
+        self.picture == 1 && self.original_rules
+    }
+
+    /// In a frame `width` wide, draws the mothership coming in from beyond the frame's right
+    /// edge (`docs/widescreen.md`). It moves as on the original, from x 255; it is only drawn
+    /// further right, by a lead that shrinks smoothly (with the square of the passes left) to
+    /// nothing at the pass the original's braking starts. So it flies in faster and slows to
+    /// the original's speed by then, and everything after, the music with it, is the
+    /// original's. Only before the descent's first pass; at 256 nothing changes, and a second
+    /// call with another width replaces the first.
+    pub fn enter_from_the_edge(&mut self, width: usize) {
+        if self.mode != Mode::Descent || self.pass != 0 {
+            return;
+        }
+        let beside = width.saturating_sub(SCREEN_WIDTH);
+        let right = (beside - beside / 2) as i32;
+        let lead = if right == 0 {
+            0
+        } else {
+            (right + ENTRY_MARGIN) << 8
+        };
+        // The passes at the starting speed before the braking: the distance left, an 8-bit
+        // number taken before each move, is still at least 37.
+        let tx = self.tx();
+        let mut passes = 0;
+        while ((((self.ship.x - passes * self.ship.x_speed) >> 8) - tx) & 0xFF) >= BRAKING_DISTANCE
+        {
+            passes += 1;
+        }
+        // Sprites already placed (the first picture) are the ship's, after picture 1's fixed
+        // ones: they move with it.
+        let moved = (lead >> 8) - (self.lead >> 8);
+        let fixed = if self.has_masks() {
+            FIXED_SPRITES.len()
+        } else {
+            0
+        };
+        for sprite in self.screen.sprites.iter_mut().skip(fixed) {
+            sprite.x += moved;
+        }
+        self.lead = lead;
+        self.lead_passes = passes as u32;
+        self.scale = (lead != 0).then(|| self.time_scale()).flatten();
+        self.scale_owed = 0;
+    }
+
+    /// The descent's time scale in a wider frame: the original's landing with nothing owned
+    /// (descent, arrival, the small object's rise) takes D passes and the launch after it L,
+    /// by the frame counter it opens with; the remake plays the D passes in 1,077 − L, so the
+    /// launch ends as the song does. The frame counter still counts the original's passes, so
+    /// the launch is the original's. With something owned the descent runs at the same speed.
+    fn time_scale(&self) -> Option<(u32, u32)> {
+        let mut original = self.clone();
+        original.nothing_owned = true;
+        original.lead = 0;
+        original.scale = None;
+        let mut counter = 0;
+        loop {
+            counter += 1;
+            original.pass += 1;
+            if original.descent(counter, Buttons::default()) != SurfaceOutcome::Running {
+                break;
+            }
+            if counter > DESCENT_SONG_PASSES {
+                return None;
+            }
+        }
+        let real = DESCENT_SONG_PASSES.checked_sub(super::launch::Launch::passes(counter))?;
+        (real > 0).then_some((counter, real))
+    }
+
+    /// Where the descent's objects are now.
+    fn drawn(&self) -> Drawn {
+        let lead = if self.mode == Mode::Descent {
+            self.lead_at(self.pass)
+        } else {
+            0
+        };
+        Drawn {
+            ship: (self.ship.x + lead, self.ship.y),
+            flame: self
+                .ship
+                .exhaust
+                .map(|_| (self.ship.exhaust_at.0 << 8, self.ship.exhaust_at.1 << 8)),
+            pod_y: self.pod.map(|pod| pod.y),
+        }
+    }
+
+    /// Where the descent's objects are drawn: in a scaled descent, on their way from where the
+    /// original's last pass found them to where it left them, by how far the remake's passes
+    /// have gone towards the original's next one.
+    fn shown(&self) -> Drawn {
+        let now = self.drawn();
+        let (Some((_, real)), Some(before), Mode::Descent) = (self.scale, self.before, self.mode)
+        else {
+            return now;
+        };
+        let way = |from: i32, to: i32| {
+            let owed = i64::from(self.scale_owed.min(real));
+            from + ((i64::from(to - from) * owed) / i64::from(real)) as i32
+        };
+        let pair = |from: (i32, i32), to: (i32, i32)| (way(from.0, to.0), way(from.1, to.1));
+        Drawn {
+            ship: pair(before.ship, now.ship),
+            flame: match (before.flame, now.flame) {
+                (Some(from), Some(to)) => Some(pair(from, to)),
+                (_, now) => now,
+            },
+            pod_y: match (before.pod_y, now.pod_y) {
+                (Some(from), Some(to)) => Some(way(from, to)),
+                (_, now) => now,
+            },
+        }
+    }
+
+    /// The lead of the mothership's wide entry after `pass` passes (1/256 px).
+    fn lead_at(&self, pass: u32) -> i32 {
+        let n = i64::from(self.lead_passes);
+        let left = n - i64::from(pass);
+        if self.lead == 0 || left <= 0 {
+            return 0;
+        }
+        (i64::from(self.lead) * left * left / (n * n)) as i32
     }
 
     /// After docking (mode 3): the menu over the picture, or at once the mothership's departure
@@ -436,6 +616,9 @@ impl Surface {
         clock: &mut Clock,
         pressed: Buttons,
     ) -> SurfaceOutcome {
+        if let (Some((original, real)), Mode::Descent) = (self.scale, self.mode) {
+            return self.scaled_descent(layouts, clock, pressed, original, real);
+        }
         self.pass += 1;
         // The counter after this pass's increment, $5D as the handler reads it.
         clock.counter = (clock.counter + 1) & 0xFF_FFFF;
@@ -453,12 +636,45 @@ impl Surface {
         outcome
     }
 
+    /// One pass of a scaled descent: as many of the original's passes as it owes (none, one,
+    /// or two), each with the frame counter's increment; buttons pressed meanwhile wait for the
+    /// next. Counted in passes, which the program runs 60 a second whatever the display's
+    /// rate, so the descent takes as long at any rate.
+    fn scaled_descent(
+        &mut self,
+        layouts: &SpriteFile,
+        clock: &mut Clock,
+        pressed: Buttons,
+        original: u32,
+        real: u32,
+    ) -> SurfaceOutcome {
+        self.scale_held |= pressed.0;
+        self.scale_owed += original;
+        let mut outcome = SurfaceOutcome::Running;
+        while self.scale_owed >= real && self.mode == Mode::Descent {
+            self.scale_owed -= real;
+            self.before = Some(self.drawn());
+            self.pass += 1;
+            clock.counter = (clock.counter + 1) & 0xFF_FFFF;
+            let held = Buttons(std::mem::take(&mut self.scale_held));
+            outcome = self.descent(clock.counter, held);
+            if outcome != SurfaceOutcome::Running {
+                break;
+            }
+        }
+        self.place_sprites(layouts);
+        outcome
+    }
+
     fn descent(&mut self, counter: u32, pressed: Buttons) -> SurfaceOutcome {
         let (tx, ty) = (self.tx(), self.ty());
         // A newly pressed A ends the descent at once when the launch follows; when the menu
         // follows it takes three more passes, the mothership moving on until then (measured).
         if pressed.has(Buttons::A) && self.skip.is_none() {
             self.skip = Some(if self.nothing_owned { 1 } else { 3 });
+            // The mothership is put at its place: no lead any more, nothing to draw on its way.
+            self.lead = 0;
+            self.before = None;
         }
         if let Some(left) = self.skip {
             if left == 1 {
@@ -483,16 +699,16 @@ impl Surface {
         }
         let moves_down = |ship: &mut Ship| {
             ship.y += ship.y_speed;
-            if ship.y >> 8 < 16 {
+            if ship.y >> 8 < DESCENT_TOP {
                 // The line-16 rule keeps the fraction (visible with picture 1's start speed).
-                ship.y = 16 << 8 | (ship.y & 0xFF);
+                ship.y = DESCENT_TOP << 8 | (ship.y & 0xFF);
                 ship.y_speed = 0;
             }
         };
         if ship.x >> 8 != tx {
             let d = ((ship.x >> 8) - tx) & 0xFF;
             ship.x -= ship.x_speed;
-            if d < 37 {
+            if d < BRAKING_DISTANCE {
                 let step = if counter & 15 == 0 { 3 } else { 2 };
                 ship.x_speed = (ship.x_speed - step).max(0);
                 if ship.x_speed == 0 {
@@ -507,7 +723,15 @@ impl Surface {
             if self.nothing_owned {
                 let picture = self.picture;
                 self.pod = Some(Pod {
-                    x: (ship.x >> 8) + if picture == 6 { 4 } else { 7 },
+                    // Over the middle of the mothership; picture 1's small one, which the
+                    // original hides as it lands, is 8 px narrower, so the remake puts the
+                    // object 4 px further left (`docs/deviations.md`).
+                    x: (ship.x >> 8)
+                        + match picture {
+                            6 => 4,
+                            1 if !self.original_rules => 3,
+                            _ => 7,
+                        },
                     y: (ship.y >> 8) << 8,
                     speed: if picture == 0 { 0x40 } else { 0x20 },
                     // Measured against the original frame by frame (planet 0): the scene ends 126
@@ -516,7 +740,10 @@ impl Surface {
                     // earlier than the pass the ship is drawn stopped in.
                     counter: 2,
                 });
-                if picture == 1 {
+                // The original switches picture 1's mothership off as it lands, in open ice,
+                // though its menu shows it parked there: the remake keeps it
+                // (`docs/deviations.md`, "Picture 1's vanishing mothership").
+                if picture == 1 && self.original_rules {
                     ship.visible = false;
                 }
             } else {
@@ -660,14 +887,24 @@ impl Surface {
                 sprites.push(Sprite::new(x, y, CURSOR_TILE, 0));
             }
         }
-        if self.picture == 1 && self.mode != Mode::Wipe {
+        if self.has_masks() && self.mode != Mode::Wipe {
             for (x, y, tile) in FIXED_SPRITES {
                 let mut sprite = Sprite::new(x, y + 1, tile, 1);
                 sprite.behind = true;
                 sprites.push(sprite);
             }
         }
-        let (x, y) = (self.ship.x >> 8, self.ship.y >> 8);
+        let shown = self.shown();
+        let (x, y) = (shown.ship.0 >> 8, shown.ship.1 >> 8);
+        // The original flies the mothership in at line 0 on pictures 1, 5 and 6, mostly above
+        // the screen, and drops it to line 16 as it starts braking (scenes.md 8.2): the remake
+        // shows it at line 16 from the start, the movement unchanged (`docs/deviations.md`,
+        // "The mothership's drop to line 16").
+        let y = if self.mode == Mode::Descent && !self.original_rules {
+            y.max(DESCENT_TOP)
+        } else {
+            y
+        };
         let (tx, _) = (self.tx(), self.ty());
         let behind = match self.picture {
             0 => x != tx,
@@ -696,11 +933,15 @@ impl Surface {
             object(SHIP_LAYOUT[self.picture], (x, y), true, false);
         }
         if let Some(frame) = self.ship.exhaust {
-            object(frame, self.ship.exhaust_at, true, false);
+            let at = shown
+                .flame
+                .unwrap_or((self.ship.exhaust_at.0 << 8, self.ship.exhaust_at.1 << 8));
+            object(frame, (at.0 >> 8, at.1 >> 8), true, false);
         }
         if let Some(pod) = &self.pod {
             // The rising object moves up, so it is drawn flipped vertically (objects.md 6.3).
-            object(POD_FRAME, (pod.x, pod.y >> 8), false, true);
+            let y = shown.pod_y.unwrap_or(pod.y);
+            object(POD_FRAME, (pod.x, y >> 8), false, true);
         }
         self.screen.sprites = sprites;
         // The remake's: the mothership is hidden by the whole cliff it sinks behind, and the

@@ -104,6 +104,13 @@ impl Launch {
         &self.screen
     }
 
+    /// The passes from the end of the landing before it to the start of play, when the scene
+    /// opens with the frame counter at `counter` and no button ends it: the pod's rise comes a
+    /// pass earlier on an odd counter (9).
+    pub fn passes(counter: u32) -> u32 {
+        if counter & 1 == 1 { 357 } else { 358 }
+    }
+
     /// Draws the first picture, before the first pass.
     pub fn show(&mut self, layouts: &SpriteFile) {
         self.place_sprites(layouts);
