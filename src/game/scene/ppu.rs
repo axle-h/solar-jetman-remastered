@@ -802,6 +802,10 @@ impl SideCells {
 pub enum SideArt {
     /// The launch scene at 16:9: the bay's machinery walls, the box, the monitor and the ball.
     Launch,
+    /// Surface picture 5's sides below the sky's bands: more of the gold crystal cluster on the
+    /// left; on the right, the bush grown into a long hedge over the ground's bands and purple
+    /// crystals, which carry on.
+    Surface5,
     /// Surface picture 6's touch-ups over its side cells: the lower-left boulder's end, and black
     /// rock behind the faces of the mirrored spires.
     Surface6,
@@ -821,10 +825,14 @@ const ART_NONE: u8 = 16;
 impl SideArt {
     pub fn pixels(self) -> &'static SideArtPixels {
         static LAUNCH: OnceLock<SideArtPixels> = OnceLock::new();
+        static SURFACE_5: OnceLock<SideArtPixels> = OnceLock::new();
         static SURFACE_6: OnceLock<SideArtPixels> = OnceLock::new();
         match self {
             SideArt::Launch => {
                 LAUNCH.get_or_init(|| decode_art(include_bytes!("launch-sides.png"), 88))
+            }
+            SideArt::Surface5 => {
+                SURFACE_5.get_or_init(|| decode_art(include_bytes!("surface-5-sides.png"), 88))
             }
             SideArt::Surface6 => {
                 SURFACE_6.get_or_init(|| decode_art(include_bytes!("surface-6-sides.png"), 88))
@@ -1128,6 +1136,50 @@ mod tests {
             ((-72..-32).contains(&x) || (280..320).contains(&x)) && (118..152).contains(&y)
         };
         assert!(drawn.iter().all(|&(x, y)| boulder(x, y) || spires(x, y)));
+    }
+
+    #[test]
+    fn surface_5_art_fills_the_sides_below_the_sky_bands_in_the_pictures_palettes() {
+        let art = SideArt::Surface5.pixels();
+        for y in 0..240 {
+            let horizon = (102..126).contains(&y);
+            // Left: only the top crystal's corner (x -3 to -1) and the purple clump; the rest
+            // is the picture's cells.
+            for x in -88..0 {
+                let corner = (-3..0).contains(&x) && (72..126).contains(&y);
+                let clump = (-50..-10).contains(&x) && (200..222).contains(&y);
+                assert!(
+                    corner || clump || y >= 222 || art.at(x, y).is_none(),
+                    "({x}, {y})"
+                );
+            }
+            // Right: below line 46 every pixel, but for the horizon's cells (lines 102-125)
+            // beside the bush's trunk and under its crown; above it the bands' cells.
+            for x in 256..344 {
+                let drawn = art.at(x, y).is_some();
+                if y < 46 || horizon && x >= 290 {
+                    assert!(!drawn, "({x}, {y})");
+                } else if !horizon || x < 262 {
+                    assert!(drawn, "({x}, {y})");
+                }
+            }
+            // Never inside the screen.
+            assert!((0..256).all(|x| art.at(x, y).is_none()));
+        }
+        // Each 8 × 8 cell of the picture's grid (rows from line −2) uses one of the picture's
+        // three palettes.
+        for row in 6..31 {
+            for column in (-11..0).chain(32..43) {
+                let palettes: std::collections::BTreeSet<_> = (0..8)
+                    .filter_map(|dy| usize::try_from(row * 8 - 2 + dy).ok())
+                    .filter(|&y| y < 240)
+                    .flat_map(|y| (0..8).filter_map(move |dx| art.at(column * 8 + dx, y)))
+                    .filter(|&(_, value)| value != 0)
+                    .map(|(palette, _)| palette)
+                    .collect();
+                assert!(palettes.len() <= 1 && palettes.iter().all(|&p| p < 3));
+            }
+        }
     }
 
     #[test]

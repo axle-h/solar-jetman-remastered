@@ -180,10 +180,61 @@ const ROCK_TOWERS: &[Step] = &[
     mirror((-1, 24), (0, 24), (1, 5)),
 ];
 
+/// Picture 5 (planets 2 and 9): the crystals. Each row's most common cell for the sky's bands;
+/// on the right, the horizon's gold line and pink band (rows 13-15) carry on beyond the bush.
+/// The rest is our own art, `SideArt::Surface5`, drawn over these.
+const CRYSTALS: &[Step] = &[
+    Common {
+        columns: (-11, 11),
+        rows: (0, 30),
+    },
+    Common {
+        columns: (32, 11),
+        rows: (0, 30),
+    },
+    // The sky down to the horizon on the left, beyond the cluster.
+    Fill {
+        to: (-11, 12),
+        size: (11, 1),
+        from: (18, 12),
+    },
+    // The horizon's gold line and pink band (rows 13-15) on both sides.
+    Fill {
+        to: (-11, 13),
+        size: (11, 1),
+        from: (25, 13),
+    },
+    copy((-11, 14), (24, 14), (3, 1)),
+    copy((-8, 14), (24, 14), (4, 1)),
+    copy((-4, 14), (24, 14), (4, 1)),
+    Fill {
+        to: (-11, 15),
+        size: (11, 1),
+        from: (25, 15),
+    },
+    Fill {
+        to: (32, 13),
+        size: (11, 1),
+        from: (25, 13),
+    },
+    copy((32, 14), (24, 14), (4, 1)),
+    copy((36, 14), (24, 14), (4, 1)),
+    copy((40, 14), (24, 14), (3, 1)),
+    Fill {
+        to: (32, 15),
+        size: (11, 1),
+        from: (25, 15),
+    },
+    // The middle and bottom crystals the picture's edge cuts, mirrored about it.
+    mirror((-2, 16), (0, 16), (2, 4)),
+    mirror((-2, 20), (0, 20), (2, 4)),
+];
+
 /// The recipe of surface picture `picture`, if it has one yet.
 fn recipe(picture: usize) -> Option<&'static [Step]> {
     match picture {
         1 => Some(ICE_FLOES),
+        5 => Some(CRYSTALS),
         6 => Some(ROCK_TOWERS),
         _ => None,
     }
@@ -191,7 +242,11 @@ fn recipe(picture: usize) -> Option<&'static [Step]> {
 
 /// Our own touch-ups over surface picture `picture`'s side cells, if it has any.
 pub fn side_art(picture: usize) -> Option<SideArt> {
-    (picture == 6).then_some(SideArt::Surface6)
+    match picture {
+        5 => Some(SideArt::Surface5),
+        6 => Some(SideArt::Surface6),
+        _ => None,
+    }
 }
 
 /// The sides of surface picture `picture`, from its nametable `page` (30 rows of 32 tiles) and
@@ -320,7 +375,7 @@ mod tests {
     #[test]
     fn every_side_cell_of_a_finished_picture_is_set() {
         let page = vec![vec![0u8; 32]; 30];
-        for picture in [1, 6] {
+        for picture in [1, 5, 6] {
             let sides = side_cells(picture, &page, &[0; 64]).unwrap();
             for row in 0..30 {
                 for column in (-11..0).chain(32..43) {
