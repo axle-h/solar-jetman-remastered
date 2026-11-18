@@ -1143,13 +1143,21 @@ mod tests {
         let art = SideArt::Surface5.pixels();
         for y in 0..240 {
             let horizon = (102..126).contains(&y);
-            // Left: only the top crystal's corner (x -3 to -1) and the purple clump; the rest
-            // is the picture's cells.
+            // Left: below the skyline only (the hill's peak is at line 79), the sky above it the
+            // picture's cells; every pixel below the ground's end.
             for x in -88..0 {
-                let corner = (-3..0).contains(&x) && (72..126).contains(&y);
-                let clump = (-50..-10).contains(&x) && (200..222).contains(&y);
+                let drawn = art.at(x, y).is_some();
+                if y < 70 {
+                    assert!(!drawn, "({x}, {y})");
+                } else if y >= 222 {
+                    assert!(drawn, "({x}, {y})");
+                }
+            }
+            // Column 0, masked on the original: only where the top crystal is closed (outside
+            // its outline, lines 60-97); below that the picture's own pixels.
+            for x in 0..8 {
                 assert!(
-                    corner || clump || y >= 222 || art.at(x, y).is_none(),
+                    (60..98).contains(&y) || art.at(x, y).is_none(),
                     "({x}, {y})"
                 );
             }
@@ -1163,13 +1171,13 @@ mod tests {
                     assert!(drawn, "({x}, {y})");
                 }
             }
-            // Never inside the screen.
-            assert!((0..256).all(|x| art.at(x, y).is_none()));
+            // Never inside the picture as the original shows it.
+            assert!((8..256).all(|x| art.at(x, y).is_none()));
         }
         // Each 8 × 8 cell of the picture's grid (rows from line −2) uses one of the picture's
         // three palettes.
         for row in 6..31 {
-            for column in (-11..0).chain(32..43) {
+            for column in (-11..1).chain(32..43) {
                 let palettes: std::collections::BTreeSet<_> = (0..8)
                     .filter_map(|dy| usize::try_from(row * 8 - 2 + dy).ok())
                     .filter(|&y| y < 240)

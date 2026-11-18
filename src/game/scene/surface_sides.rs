@@ -180,9 +180,11 @@ const ROCK_TOWERS: &[Step] = &[
     mirror((-1, 24), (0, 24), (1, 5)),
 ];
 
-/// Picture 5 (planets 2 and 9): the crystals. Each row's most common cell for the sky's bands;
-/// on the right, the horizon's gold line and pink band (rows 13-15) carry on beyond the bush.
-/// The rest is our own art, `SideArt::Surface5`, drawn over these.
+/// Picture 5 (planets 2 and 9): the crystals. Each row's most common cell for the sky's bands,
+/// and on the left the sky down to the skyline; on the right, the horizon's gold line and pink
+/// band (rows 13-15) carry on beyond the bush. The rest is our own art, `SideArt::Surface5`,
+/// drawn over these: on the left the skyline, the cluster's crystals carried on and closed (over
+/// column 0 too, in a wider frame) and the ground's bands.
 const CRYSTALS: &[Step] = &[
     Common {
         columns: (-11, 11),
@@ -192,26 +194,14 @@ const CRYSTALS: &[Step] = &[
         columns: (32, 11),
         rows: (0, 30),
     },
-    // The sky down to the horizon on the left, beyond the cluster.
+    // The sky down to the skyline on the left, beyond the cluster (row 13 too, for the notches
+    // between the art's hill and bush).
     Fill {
         to: (-11, 12),
-        size: (11, 1),
+        size: (11, 2),
         from: (18, 12),
     },
-    // The horizon's gold line and pink band (rows 13-15) on both sides.
-    Fill {
-        to: (-11, 13),
-        size: (11, 1),
-        from: (25, 13),
-    },
-    copy((-11, 14), (24, 14), (3, 1)),
-    copy((-8, 14), (24, 14), (4, 1)),
-    copy((-4, 14), (24, 14), (4, 1)),
-    Fill {
-        to: (-11, 15),
-        size: (11, 1),
-        from: (25, 15),
-    },
+    // The horizon's gold line and pink band (rows 13-15) on the right.
     Fill {
         to: (32, 13),
         size: (11, 1),
@@ -225,9 +215,6 @@ const CRYSTALS: &[Step] = &[
         size: (11, 1),
         from: (25, 15),
     },
-    // The middle and bottom crystals the picture's edge cuts, mirrored about it.
-    mirror((-2, 16), (0, 16), (2, 4)),
-    mirror((-2, 20), (0, 20), (2, 4)),
 ];
 
 /// The recipe of surface picture `picture`, if it has one yet.

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Draws src/game/scene/surface-5-sides.png, surface picture 5's sides in a 16:9 frame
-(docs/widescreen.md), from shapes alone: crystals, lines, a bush, bands of ground. Deterministic,
-standard library only. Coordinates are the picture's (x 0-255, lines 0-239); the art covers
-x -88 to 343. The points where a shape meets the picture's edge were measured on the picture.
+(docs/widescreen.md), from shapes alone: crystals, lines, a hill, bushes, bands of ground.
+Deterministic, standard library only. Coordinates are the picture's (x 0-255, lines 0-239); the
+art covers x -88 to 343, and on the left also column 0 (x 0-7), which the original masks. The
+points where a shape meets the picture's edge were measured on the picture, column 0's hidden
+pixels included.
 
 Run from the repository root:
-    python3 tools/art/surface-5-sides.py [--crystals N] [--bush N] [--out FILE]
-N picks one of the designs below (1-5); the defaults are the chosen ones.
+    python3 tools/art/surface-5-sides.py [--bush N] [--out FILE]
+N picks the bush's trunk (1-3); the default is the chosen one.
 """
 
 import argparse
@@ -27,11 +29,17 @@ INK = {
     "p": (PINK, 2), "q": (PINK, 3),
 }
 
+# The art may also cover column 0 (x 0-7), masked on the original, where the picture's hidden
+# pixels would carry its crystals on beyond what the original shows.
+COLUMN_0_END = 8
+
 canvas = {}
+# The pixels inside the shapes filled so far (the crystals): the ground never shows there.
+solid = set()
 
 
 def put(x, y, c):
-    if -LEFT <= x < WIDTH - LEFT and TOP <= y < HEIGHT and not 0 <= x < 256:
+    if -LEFT <= x < WIDTH - LEFT and TOP <= y < HEIGHT and not COLUMN_0_END <= x < 256:
         canvas[(x, y)] = c
 
 
@@ -99,44 +107,15 @@ def seg_dist(px, py, a, b):
     return math.hypot(px - ax - t * dx, py - ay - t * dy)
 
 
-def shade_at(x, y, d, tone):
-    """The picture's shading: `tone` 0 (dark face) to 3 (lit face) sets how far from the lit
-    edge (distance d) the checks of gold and dark gold, then dark checks, then specks reach."""
-    reach = (1.2, 2.5, 4.0, 6.5)[tone]
-    k = d / reach
-    check = (x + y) % 2
-    if k < 0.3:
-        return "G" if check else "d"
-    if k < 0.55:
-        return "d" if check else ("G" if (x // 2 + y) % 3 == 0 else "d")
-    if k < 1.0:
-        return "d" if check else "."
-    if k < 1.5:
-        return "d" if check and y % 2 else "."
-    if k < 2.2:
-        return "d" if check and y % 4 == 1 and x % 4 == 1 else "."
-    return "."
-
-
-def face(poly, lit, tone):
+def fill(poly, c="."):
+    """Fills `poly` with `c` (black by default), its pixels then solid: the ground stays out."""
     xs = [p[0] for p in poly]
     ys = [p[1] for p in poly]
     for y in range(math.floor(min(ys)), math.ceil(max(ys)) + 1):
         for x in range(math.floor(min(xs)), math.ceil(max(xs)) + 1):
             if inside(poly, x + 0.5, y + 0.5):
-                d = min(seg_dist(x + 0.5, y + 0.5, a, b) for a, b in lit) if lit else 99
-                put(x, y, shade_at(x, y, d, tone))
-
-
-def fill(poly, c="."):
-    face(poly, [], 0)
-    if c != ".":
-        xs = [p[0] for p in poly]
-        ys = [p[1] for p in poly]
-        for y in range(math.floor(min(ys)), math.ceil(max(ys)) + 1):
-            for x in range(math.floor(min(xs)), math.ceil(max(xs)) + 1):
-                if inside(poly, x + 0.5, y + 0.5):
-                    put(x, y, c)
+                put(x, y, c)
+                solid.add((x, y))
 
 
 def stamp(x, y, rows):
@@ -155,182 +134,13 @@ def axis(tip, direction):
     return at
 
 
-def quartz(tip, direction, length, half, point, width=1, faces=3, tones=(3, 1, 0),
-           ridge="W", blunt=0.0):
-    """A quartz point: a six-sided prism seen side on, `faces` (2 or 3) of its body and point
-    showing, lit from the left. Its body fades into the dark towards its base, which other
-    crystals hide. `width` is the edges' thickness; `ridge` the colour of the edge between the
-    lit face and the next; `blunt` flattens the very tip."""
-    at = axis(tip, direction)
-    if faces == 3:
-        sides = (-half, -half * 0.35, half * 0.45, half)
-        backs = (point, point * 1.18, point * 1.12, point)
-    else:
-        sides = (-half, half * 0.2, half)
-        backs = (point, point * 1.25, point)
-    if blunt:
-        top = [at(0, s * blunt) for s in sides]
-    else:
-        top = [at(0, 0)] * len(sides)
-    shoulder = [at(b, s) for s, b in zip(sides, backs)]
-    base = [at(length, s) for s in sides]
-    out = [top[0], *([top[-1]] if blunt else []), shoulder[-1], base[-1], base[0], shoulder[0]]
-    fill(out)
-    n = len(sides) - 1
-    tone_list = tones[:n] if faces == 3 else (tones[0], tones[2])
-    for i in range(n):
-        tone = tone_list[i]
-        face([top[i], top[i + 1], shoulder[i + 1], shoulder[i]],
-             [(top[i], shoulder[i]), (top[i + 1], shoulder[i + 1])] if i == 0 else
-             [(top[i], shoulder[i])], min(3, tone + 1))
-        face([shoulder[i], shoulder[i + 1], base[i + 1], base[i]],
-             [(shoulder[i], shoulder[i + 1])] + ([(shoulder[i], base[i])] if i == 0 else []),
-             tone)
-    # The point's outline and shoulders in full; the body's edges fade out towards the base.
-    tip_line = [shoulder[0], top[0]] + ([top[-1]] if blunt else []) + [shoulder[-1]]
-    for a, b in zip(tip_line, tip_line[1:]):
-        edge(a, b, width, (0, 1))
-    for i in range(n):
-        edge(shoulder[i], shoulder[i + 1], width, (0, 1))
-    for i in range(1, n):
-        edge(top[i], shoulder[i], 1, (1, 0), ridge if i == 1 and ridge else "G")
-    for i, s in enumerate(sides):
-        a, b = shoulder[i], base[i]
-        inner = (1, 0) if i == 0 else (-1, 0)
-        for k, x, y in points(*a, *b):
-            t = k / max(1, max(abs(round(b[0]) - round(a[0])), abs(round(b[1]) - round(a[1]))))
-            if t < 0.45:
-                put(x, y, "G" if i in (0, n) else "d")
-                if width >= 2 and i in (0, n):
-                    put(x + inner[0], y + inner[1], "d")
-            elif t < 0.8 and k % 2 == 0:
-                put(x, y, "d")
-
-
-def octahedron(cx, cy, w, h, tilt=0, width=1):
-    """A crystal seen point on, as the picture's middle one: four faces about a white cross."""
-    top, bottom = (cx + tilt, cy - h), (cx - tilt, cy + h)
-    left, right = (cx - w, cy), (cx + w, cy)
-    c = (cx, cy)
-    fill([top, right, bottom, left])
-    face([top, c, left], [(top, left)], 3)
-    face([top, right, c], [(top, right)], 2)
-    face([left, c, bottom], [(left, bottom)], 1)
-    face([c, right, bottom], [(right, bottom)], 0)
-    for a, b in [(top, right), (right, bottom), (bottom, left), (left, top)]:
-        edge(a, b, width, (1 if a[0] < cx else -1, 0))
-    line(top[0], top[1] + 1, *c, "W")
-    line(*c, bottom[0], bottom[1] - 1, "G")
-    line(left[0] + 1, cy, right[0] - 1, cy, "G")
-
-
 # ---------------------------------------------------------------------------------------------
 # Left: more of the gold crystal cluster.
-
-def seam_pieces(width):
-    """What carries on the picture's cut crystals from where their lines leave it: the top edge
-    at (0, 72) and (6, 74), the line at 97, the edge from (3, 80), the box crystal's white top
-    at line 165 and its gold foot at 190, and the rays."""
-    for (x0, y0, x1, y1) in [(0, 141, -40, 121), (0, 154, -46, 131), (0, 190, -30, 182),
-                             (0, 200, -44, 196), (-2, 214, -36, 221)]:
-        ray(x0, y0, x1, y1)
-    apex, lc = (-18, 56), (-38, 70)
-    fill([apex, (0, 72), (6, 74), (6, 140), (-38, 140), lc])
-    mid = (-20, 82)
-    face([apex, lc, mid], [(apex, lc)], 3)
-    face([apex, mid, (6, 97), (6, 74), (0, 72)], [(apex, (0, 72)), ((0, 72), (6, 74))], 2)
-    face([lc, mid, (-20, 140), (-38, 140)], [(lc, mid), (lc, (-38, 140))], 1)
-    face([mid, (6, 97), (6, 140), (-20, 140)], [((-20, 97), (6, 97))], 2)
-    edge(apex, (0, 72), width, (0, 1))
-    line(0, 72, 6, 74, "G")
-    edge(apex, lc, width, (1, 1))
-    edge(lc, (-38, 140), width, (1, 0))
-    line(apex[0], apex[1] + 1, mid[0], mid[1] - 1, "W")
-    line(mid[0], mid[1], -20, 140, "d")
-    edge(lc, mid, 1, (0, 1))
-    edge(mid, (0, 93), 1, (0, 1))
-    line(-20, 97, -1, 97, "G")
-    edge((-1, 88), (-16, 118), 1, (-1, 0))
-    box = [(-18, 160), (0, 165), (0, 190), (-18, 186)]
-    fill(box)
-    face(box, [((-18, 160), (0, 165)), ((-18, 160), (-18, 186))], 2)
-    line(-18, 160, -1, 165, "W")
-    edge((-18, 160), (-18, 186), 2, (1, 0), "W", "G")
-    line(-18, 186, -1, 190, "G")
-
 
 SHARDS = [["  W  ", " mWu ", " mWu ", "mmuuu", " muu "],
           [" W ", "mWu", "mWu", "muu", "mu "],
           ["   Wu", "  mWu", " mWu ", "mmu  ", " u   "],
           ["Wu  ", "mWu ", " mWu", "  mu", "  u "]]
-
-
-def purple_clump(spots):
-    for i, (x, y) in enumerate(spots):
-        stamp(x, y, SHARDS[i % 4])
-
-
-CLUMP = [(-34, 205), (-30, 208), (-38, 210), (-26, 211), (-33, 212), (-42, 213), (-22, 214),
-         (-29, 215), (-37, 216), (-46, 217), (-18, 217), (-25, 218)]
-
-
-FAN = [((-106, 100), (-0.75, -0.66), 70, 13, 15),
-       ((-84, 62), (-0.38, -0.92), 90, 15, 18),
-       ((-52, 50), (-0.08, -1.0), 80, 14, 17),
-       ((-100, 156), (-0.95, -0.3), 55, 11, 13)]
-
-
-def mirror_seam():
-    """Over the cluster mirrored about x 0 (the picture's cells): the picture's crystals are
-    kept in front, the mirrored ones pass behind them. The top crystal is closed just left of
-    the edge (its left edge from (3, 80) on down, its foot back to (0, 106)); the box crystal
-    too (its white top at line 165, its gold foot at 190); the mirrored lines that would meet
-    their originals at the edge are cleared, and the picture's own carry on a little."""
-    def left_edge(y):
-        return 3 - 6 * (y - 80) / 19
-
-    def in_front(x, y):
-        return (76 <= y <= 106 and left_edge(min(y, 99)) <= x < 0
-                and (x >= -3 or y <= 99) and y <= 99 + 7 * (x + 3) / 3)
-    # A crystal's tip rising behind, in the notch between the two peaks.
-    tip = [(-5, 65), (0, 71), (0, 76), (-10, 76), (-10, 74)]
-    for y in range(65, 77):
-        for x in range(-10, 0):
-            if inside(tip, x + 0.5, y + 0.5):
-                check = (x + y) % 2
-                if x < -5:
-                    put(x, y, ("G" if check else "d") if y < 72 else ("d" if check else "."))
-                else:
-                    put(x, y, "d" if check and y < 74 else ".")
-    line(-5, 65, -1, 70, "G")
-    line(-5, 65, -10, 74, "G")
-    line(-5, 66, -5, 70, "W")
-    # Behind the seam: clear the mirrored lines.
-    for y in range(100, 161):
-        for x in range(-12 + max(0, (y - 140) // 4), 0):
-            put(x, y, ".")
-    for y in range(76, 107):
-        for x in range(-8, 0):
-            if in_front(x, y):
-                put(x, y, "d" if (x + y) % 2 == 0 and y % 3 == 0 else ".")
-    edge((0, 87), (-3, 99), 2, (1, 0))
-    line(-3, 99, -1, 104, "G")
-    line(round(left_edge(97)) + 1, 97, -1, 97, "G")
-    # The picture's lines and rays carried on into the cleared space, fading.
-    for i, x, y in points(0, 115, -5, 108):
-        put(x, y, "W" if i < 3 else "d")
-    ray(0, 141, -14, 134)
-    ray(0, 154, -14, 148)
-    # The box crystal closed: dense checks under its white top, fading lower down.
-    for y in range(160, 193):
-        for x in range(-16, 0):
-            put(x, y, ".")
-    face([(-10, 165), (0, 165), (0, 190), (-10, 189)], [((-10, 165), (0, 165)),
-                                                        ((-10, 165), (-10, 189))], 3)
-    line(-10, 165, -1, 165, "W")
-    line(-10, 166, -10, 189, "W")
-    line(-11, 166, -11, 188, "G")
-    line(-10, 189, -1, 190, "G")
 
 
 def band_shade(x, y, d, reach):
@@ -359,130 +169,403 @@ def shaded(poly, lit, reach):
                 put(x, y, band_shade(x, y, d, reach))
 
 
-def hex_crystal(apex, shoulders, body, ridge, reach=11):
-    """A six-sided crystal drawn as the picture's are: its point's faces meet at `apex`, the
-    visible `shoulders` (left to right) where they meet the body, whose edges run along `body`
-    (a vector) and fade out. Faces are black, shaded inside their upper edges; the edge to
-    shoulder `ridge` is white."""
-    bx, by = body
-    bottom = [(sx + bx, sy + by) for sx, sy in shoulders]
-    silhouette = [apex, shoulders[-1], bottom[-1], bottom[0], shoulders[0]]
-    fill(silhouette)
-    for i in range(len(shoulders) - 1):
-        shaded([apex, shoulders[i], shoulders[i + 1]], [(apex, shoulders[i])],
-               reach if i == 0 else reach * 0.6)
-        shaded([shoulders[i], shoulders[i + 1], bottom[i + 1], bottom[i]],
-               [(shoulders[i], shoulders[i + 1])], reach * (1.0 if i == 0 else 0.7))
-    # Edges: the point's outline doubled, the shoulders, the body's fading down.
-    for a, b in [(apex, shoulders[0]), (apex, shoulders[-1])]:
-        edge(a, b, 2, (0, 1), "G", "G")
-    for i, sh in enumerate(shoulders):
-        if 0 < i < len(shoulders) - 1:
-            line(*apex, *sh, "W" if i == ridge else "G")
-        if i + 1 < len(shoulders):
-            line(*sh, *shoulders[i + 1], "G")
-        for k, x, y in points(*sh, sh[0] + bx, sh[1] + by):
-            t = k / max(1, max(abs(bx), abs(by)))
-            if t < 0.5 or (t < 0.85 and k % 2 == 0):
-                put(x, y, "G" if t < 0.3 and i in (0, len(shoulders) - 1) else "d")
+def skyline(knots, x0, x1, seed, lump=1.5):
+    """A silhouette's top line from `knots` (x, y), with lumps of leaves along it: y by x."""
+    tops = {}
+    for x in range(x0, x1):
+        for (ax, ay), (bx, by) in zip(knots, knots[1:]):
+            if ax <= x <= bx:
+                y = ay + (by - ay) * (x - ax) / (bx - ax or 1)
+                break
+        else:
+            y = knots[-1][1]
+        # Round lumps a few pixels wide, as the picture's hill and bush have.
+        k = x // 5
+        y -= lump * math.sin(math.pi * (x - k * 5) / 5) * (0.5 + hash01(k, seed))
+        tops[x] = round(y)
+    return tops
 
 
-def continued():
-    """The picture's cut crystals carried on from where their lines leave it at x 0, and the
-    cluster's last crystals beyond them."""
-    # Sky down to the crystals, the cluster's black below.
-    for y in range(TOP, GROUND_END):
-        for x in range(-LEFT, 0):
-            put(x, y, "W" if y < 99 else ".")
-    # Behind: a crystal leaning out to the left, and a point-on one low down.
-    hex_crystal((-54, 70), [(-84, 99), (-62, 106), (-32, 100)], (-14, 44), 1, 9)
-    octahedron(-60, 170, 18, 26, 3, 1)
-    for (x0, y0, x1, y1) in [(-40, 150, -88, 128), (-44, 190, -88, 200), (-30, 205, -70, 221),
-                             (0, 141, -34, 125), (0, 154, -40, 136)]:
-        ray(x0, y0, x1, y1)
-    # The picture's top-left crystal: its point at (13, 62), its left edge leaving the picture
-    # at (0, 73) for its shoulder at (-28, 97), its middle edge leaving at (0, 88) for (-4, 97),
-    # the shoulders' line at 97 carried on; its body edges slant down to the right, as the
-    # picture's line from (0, 106) does.
-    hex_crystal((13, 62), [(-28, 97), (-4, 97), (30, 97), (46, 78)], (14, 30), 2)
-    # A crystal behind it whose edges show through below: the picture's white line from
-    # (0, 115) and its gold one beside it.
-    for i, x, y in points(0, 115, -12, 97):
-        put(x, y, "W" if i < 6 else ("G" if i % 2 else "d"))
-    # The box crystal: its white top from line 165, its lit face, its gold foot at 190.
-    box = [(-12, 165), (0, 165), (0, 190), (-12, 188)]
-    fill(box)
-    shaded(box, [((-12, 165), (0, 165)), ((-12, 165), (-12, 188))], 9)
-    line(-12, 165, -1, 165, "W")
-    line(-12, 166, -12, 188, "W")
-    line(-13, 167, -13, 187, "G")
-    line(-12, 188, -1, 190, "G")
+def rimmed(tops, bottom, rim, seed):
+    """Black under `tops` down to line `bottom`, its upper edge lit as the picture's hill (rim
+    "purple") or bush (rim "gold") are: bright on the edge, fading in a few pixels."""
+    for x, top in tops.items():
+        for y in range(top, bottom):
+            # How deep under the edge, up or along the slope.
+            depth = min([y - top] + [abs(x - nx) - 1 for nx in range(x - 4, x + 5)
+                                     if nx in tops and tops[nx] > y])
+            h = hash01(x, y, seed)
+            check = (x + y) % 2
+            if rim == "purple":
+                c = ("m" if h < 0.7 else "u") if depth == 0 else \
+                    ("u" if h < 0.6 else "m") if depth == 1 else \
+                    ("u" if h < 0.7 else ".") if depth == 2 else \
+                    ("u" if h < 0.25 else ".") if depth == 3 else "."
+            else:
+                c = ("G" if check or h < 0.4 else "d") if depth == 0 else \
+                    ("d" if check or h < 0.3 else "G") if depth == 1 else \
+                    ("d" if check else ".") if depth == 2 else \
+                    ("d" if check and h < 0.5 else ".") if depth <= 4 else "."
+            put(x, y, c)
+        # A pixel of leaves sticking up here and there.
+        if hash01(x, seed, 7) < 0.2 and tops.get(x - 1, 0) >= top and tops.get(x + 1, 0) >= top:
+            put(x, top - 1, ("m" if rim == "purple" else "G"))
 
 
-def crystals(design):
-    if design == 0:
-        return
-    if design == 8:
-        # The top crystal's corner: its top edge from (0, 72) on to (-3, 75), its doubled left
-        # edge down x -3 and -2 to where the middle crystal begins, its face's shading.
-        for i, (x, y) in enumerate([(-1, 73), (-2, 74), (-3, 75)]):
+def specks(x0, x1, y0, y1, seed, density, c="u"):
+    """Purple specks in the dark at a silhouette's foot."""
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            if hash01(x, y, seed) < density * (1 - (y - y0) / (y1 - y0)):
+                put(x, y, c)
+
+
+def left_horizon():
+    """The skyline left of the cluster, in the order the picture's runs right of it: by the
+    cluster a hill rimmed in purple, its far foot at the cell edge x -48; then a bush rimmed in
+    gold (x -72 to -50) sloping down into a low hedge that hides the horizon to the frame's
+    edge."""
+    hill = skyline([(-48, 104), (-44, 95), (-38, 90), (-31, 88), (-25, 82), (-18, 79),
+                    (-11, 82), (-6, 85), (0, 84), (8, 86)], -48, COLUMN_0_END, 20, 2.5)
+    rimmed(hill, 126, "purple", 21)
+    specks(-48, -32, 112, 124, 22, 0.035)
+    bush = skyline([(-89, 101), (-83, 100), (-77, 99), (-72, 96), (-67, 93), (-58, 93),
+                    (-53, 95), (-50, 101), (-49, 104)], -88, -48, 30, 2)
+    rimmed(bush, 126, "gold", 31)
+    # Under the bush and hedge, purple specks in the dark, as under the picture's bush.
+    specks(-88, -48, 110, 124, 32, 0.07)
+
+
+def outline_x(y):
+    """The top crystal's left outline: the picture's ridge through (5, 76) and (0, 87), on
+    down to the crystal's left point at (-6, 97)."""
+    return 7 - 13 * (y - 72) / 25
+
+
+def top_crystal_close():
+    """The top crystal closed at its left point (-6, 97), where its outline meets the
+    shoulders' gold line at 97. Column 0's hidden pixels outside the outline (more of the
+    crystal than the original shows) give way to the sky and the hill. Below the point, the
+    body's edge runs on down to the picture's gold line leaving at (0, 106)."""
+    point = (-6, 97)
+    # Outside the outline in column 0: the sky, the hill as drawn, or the hill's dark.
+    for y in range(60, 98):
+        for x in range(-12, COLUMN_0_END):
+            if x >= outline_x(y):
+                if x < 0:
+                    put(x, y, ".")
+                else:
+                    canvas.pop((x, y), None)
+                continue
+            if x >= 0 and get(x, y) is None:
+                put(x, y, "W" if y < 84 else ".")
+    # Column 0 below the point is the picture's own.
+    for y in range(98, 126):
+        for x in range(COLUMN_0_END):
+            canvas.pop((x, y), None)
+    # Inside the outline: the face's shading, then the body's small face under the point.
+    face_poly = [(0, 87), point, (0, 97)]
+    fill(face_poly)
+    shaded(face_poly, [((0, 87), point)], 7)
+    below = [point, (0, 97), (0, 106)]
+    fill(below)
+    shaded(below, [(point, (0, 97))], 7)
+    edge((7, 72), point, 2, (1, 0), "G", "G")
+    line(point[0] + 1, 97, -1, 97, "G")
+    line(point[0], 98, -1, 105, "G")
+
+
+def box_shade(x, y, d, reach):
+    """The picture's box crystal's shading inside a lit edge, `reach` pixels deep: a thin
+    strip of gold by the edge, a gold and dark gold check, solid dark gold, dark checks,
+    sparse specks."""
+    k = d * 11 / reach
+    check = (x + y) % 2
+    if k < 0.9:
+        return "G"
+    if k < 2.2:
+        return "G" if check else "d"
+    if k < 5:
+        return "d"
+    if k < 8:
+        return "d" if check else "."
+    if k < 11:
+        return "d" if check and (x // 2 + y) % 2 else "."
+    return "."
+
+
+def seg_dist_t(px, py, a, b):
+    """The distance from (px, py) to segment a-b, and how far along it (0-1) the nearest point is."""
+    (ax, ay), (bx, by) = a, b
+    dx, dy = bx - ax, by - ay
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy or 1)))
+    return math.hypot(px - ax - t * dx, py - ay - t * dy), t
+
+
+# How deep the new crystals' shading reaches, against the depths their faces are given: the
+# picture's crystals (the one at column 9, rows 9-16, above all) are shaded only 2-3 pixels in
+# from an edge, black inside.
+SHADE_DEPTH = 0.75
+
+
+def box_shaded(poly, lit):
+    """Shades `poly` from its edges, each (a, b, reach), as on the picture's box crystals: an
+    edge's shading reaches deepest at its ends and least at its middle (to `reach` × 0.55), and
+    the edges' distances blend (a harmonic mean), so that the shading swells into the corners
+    and the dark inside rounds off."""
+    xs = [p[0] for p in poly]
+    ys = [p[1] for p in poly]
+    for y in range(math.floor(min(ys)), math.ceil(max(ys)) + 1):
+        for x in range(math.floor(min(xs)), math.ceil(max(xs)) + 1):
+            if inside(poly, x + 0.5, y + 0.5):
+                total = 0.0
+                for a, b, reach in lit:
+                    d, t = seg_dist_t(x + 0.5, y + 0.5, a, b)
+                    r = SHADE_DEPTH * reach * (0.55 + 0.45 * abs(2 * t - 1) ** 2)
+                    total += 1 / (max(0.3, d) * 11 / r)
+                k = 1 / total + (hash01(x, y, 9) - 0.5) * 0.6
+                put(x, y, box_shade(x, y, max(0.0, k), 11))
+
+
+def box_crystal():
+    """A crystal seen end on below the top one, shaded as the picture's box crystals are: its
+    front face (x -31 to -6, lines 105-136) with white top and left edges and a white
+    diagonal, gold right and bottom edges; its side face receding to the picture's edge
+    between the picture's white line leaving at (0, 115) and its gold one at (0, 141), whose
+    shading column 0 already shows; its bottom face below. A ray from under it runs on to
+    the picture's at (0, 154)."""
+    # The mirrored cells' lines under it are cleared.
+    for y in range(106, 163):
+        for x in range(-16, 0):
+            put(x, y, ".")
+    tl, tr, br, bl = (-31, 105), (-6, 105), (-6, 136), (-31, 136)
+    front = [tl, tr, br, bl]
+    side = [tr, (0, 115), (0, 141), br]
+    bottom = [bl, br, (0, 141), (-24, 142)]
+    for poly in (front, side, bottom):
+        fill(poly)
+    # The front face: lit from its top and left edges, and the diagonal lights both its halves
+    # a little, as the picture's box's does.
+    upper = [tl, tr, br]
+    lower = [tl, br, bl]
+    # As deep as the picture's box crystal at (13, 19) is shaded.
+    box_shaded(upper, [(tl, tr, 7), (tl, br, 4), (tr, br, 2.5)])
+    box_shaded(lower, [(tl, bl, 7), (tl, br, 4), (bl, br, 2.5)])
+    box_shaded(side, [(tr, (0, 115), 6), (tr, br, 3)])
+    box_shaded(bottom, [(bl, br, 4)])
+    line(*tl, tr[0], tr[1], "W")
+    line(*tl, *bl, "W")
+    # The diagonal: white by the corners, toning down to gold in the middle, as the picture's.
+    n = max(br[0] - tl[0], br[1] - tl[1]) - 2
+    for i, x, y in points(tl[0] + 1, tl[1] + 1, br[0] - 1, br[1] - 1):
+        middle = 1 - abs(2 * i / n - 1)
+        put(x, y, "W" if middle < 0.4 else "G")
+    line(*tr, *br, "G")
+    line(tr[0] + 1, tr[1] + 2, br[0] + 1, br[1] - 1, "d")
+    line(*bl, *br, "G")
+    # The side face's edges: the white one on to (0, 115), the gold one on to (0, 141); the
+    # bottom face's lower edge fading out to the left.
+    for _, x, y in points(*tr, -1, 114):
+        put(x, y, "W")
+    for _, x, y in points(*br, -1, 140):
+        put(x, y, "G")
+    for i, x, y in points(-1, 141, -24, 142):
+        if i < 12 or i % 2 == 0:
+            put(x, y, "G" if i < 8 else "d")
+    ray(-1, 154, -18, 145)
+
+
+def edge_crystal():
+    """The crystal the edge cuts low down, whose point, white ridge and right faces the
+    picture and column 0 show, made a box on the left: its white top edge rising from a corner
+    at (-17, 169) to the point by x 0 (line 165); its left edge down to (-16, 191), white then
+    gold; its bottom edge the picture's line leaving at (0, 190); its diagonal the picture's
+    gold line leaving at (0, 183), white by the corner. Shaded as the box above."""
+    for y in range(156, 196):
+        for x in range(-17, 0):
+            put(x, y, ".")
+    tl, top, diag, foot, bl = (-17, 169), (0, 165), (0, 183), (0, 190), (-16, 191)
+    upper = [tl, top, diag]
+    lower = [tl, diag, foot, bl]
+    for poly in (upper, lower):
+        fill(poly)
+    box_shaded(upper, [(tl, top, 7), (tl, diag, 3.5)])
+    box_shaded(lower, [(tl, bl, 5), (tl, diag, 3.5)])
+    line(*tl, -1, 165, "W")
+    for i, x, y in points(*tl, *bl):
+        put(x, y, "W" if i < 12 else "G")
+    for i, x, y in points(tl[0] + 1, tl[1] + 1, -1, 182):
+        put(x, y, "W" if i < 7 else "G")
+    line(*bl, -1, 190, "G")
+
+
+def fading(a, b, bright=0.35, last=0.8):
+    """A body's edge from a, gold then dark gold, dotted towards b, where it fades out."""
+    n = max(1, max(abs(round(b[0]) - round(a[0])), abs(round(b[1]) - round(a[1]))))
+    for i, x, y in points(*a, *b):
+        t = i / n
+        if t < bright:
             put(x, y, "G")
-        for y in range(75, 126):
-            put(-3, y, "G" if y < 104 or y % 2 else "d")
-            put(-2, y, ("G" if y % 2 else "d") if y < 104 else "d" if y % 3 else ".")
-            put(-1, y, "G" if y == 97 else band_shade(-1, y, max(0, y - 74) if y < 97
-                                                       else y - 97, 11))
-        purple_clump(CLUMP)
-        return
-    if design == 7:
-        continued()
-        purple_clump(CLUMP)
-        return
-    if design == 6:
-        mirror_seam()
-        return
-    for y in range(TOP, GROUND_END):
-        for x in range(-LEFT, 0):
-            put(x, y, "W" if y < 90 else ".")
-    if design == 1:
-        # Three-faced quartz points fanning out from the cluster, thin edges.
-        for c in FAN:
-            quartz(*c, width=1)
-        seam_pieces(1)
-        octahedron(-52, 172, 20, 27, 3, 1)
-    elif design == 2:
-        # The same fan, edges doubled (gold, dark gold inside).
-        for c in FAN:
-            quartz(*c, width=2)
-        seam_pieces(2)
-        octahedron(-52, 172, 20, 27, 3, 2)
-    elif design == 3:
-        # Two big points with blunt tips, double edges.
-        quartz((-98, 76), (-0.5, -0.87), 95, 20, 22, width=2, blunt=0.3)
-        quartz((-58, 50), (-0.12, -0.99), 90, 19, 22, width=2, blunt=0.3)
-        seam_pieces(2)
-        octahedron(-56, 176, 22, 28, 2, 2)
-        quartz((-100, 160), (-0.9, -0.45), 55, 12, 14, width=2)
-    elif design == 4:
-        # A jumble of smaller points at many angles, thin edges.
-        for c in [((-108, 112), (-0.75, -0.66), 50, 10, 12),
-                  ((-88, 70), (-0.4, -0.92), 60, 11, 13),
-                  ((-62, 56), (-0.12, -0.99), 60, 10, 13),
-                  ((-104, 160), (-0.95, -0.3), 45, 9, 11),
-                  ((-76, 128), (-0.6, -0.8), 45, 9, 11),
-                  ((-50, 112), (-0.2, -0.98), 40, 8, 10)]:
-            quartz(*c, width=1, tones=(3, 2, 0))
-        seam_pieces(1)
-        octahedron(-46, 182, 16, 22, 2, 1)
-        octahedron(-86, 198, 13, 18, -2, 1)
-    else:
-        # Two-faced points (lit and dark, a white ridge between), as the picture's top ones are
-        # drawn, double edges.
-        for c in FAN:
-            quartz(*c, width=2, faces=2)
-        seam_pieces(2)
-        octahedron(-52, 172, 20, 27, 3, 2)
-    purple_clump(CLUMP)
+        elif t < last and (t < 0.55 or i % 2 == 0):
+            put(x, y, "d")
+
+
+def tall_crystal():
+    """A tall six-sided crystal standing in front of the hill's dark, its point up: the tip at
+    (-46, 146), shoulders at (-56, 169), (-40, 174) and (-26, 160), a white ridge from the tip
+    to the middle one, its body's edges fading out below."""
+    a, l, m, r = (-46, 146), (-56, 169), (-40, 174), (-26, 160)
+    lb, mb, rb = (-45, 210), (-35, 205), (-23, 196)
+    left_point, right_point = [a, l, m], [a, m, r]
+    left_body, right_body = [l, m, mb, lb], [m, r, rb, mb]
+    for poly in (left_body, right_body, left_point, right_point):
+        fill(poly)
+    box_shaded(left_body, [(l, m, 6), (l, lb, 4), (m, mb, 2)])
+    box_shaded(right_body, [(m, r, 5), (m, mb, 3), (r, rb, 2)])
+    # The point's faces mostly black inside, shaded only along their edges, as the picture's.
+    box_shaded(left_point, [(a, l, 4), (a, m, 2), (l, m, 1.2)])
+    box_shaded(right_point, [(a, r, 3.5), (a, m, 1.8), (m, r, 1.2)])
+    # The body fades into the dark towards its foot.
+    for y in range(185, 212):
+        for x in range(-58, -20):
+            if get(x, y) not in (None, ".") and hash01(x, y, 12) < (y - 185) / 26:
+                put(x, y, ".")
+    fading(l, lb)
+    fading(m, mb)
+    fading(r, rb)
+    # Gold outlines, as the picture's crystals have; only the ridge is white.
+    edge(a, l, 2, (1, 0), "G", "d")
+    edge(a, r, 2, (0, 1), "G", "d")
+    for i, x, y in points(a[0], a[1] + 1, *m):
+        put(x, y, "W" if i < 6 or i > 20 else "G")
+    line(*l, *m, "G")
+    line(m[0] + 1, m[1] - 1, *r, "G")
+
+
+def pyramid_crystal():
+    """A small crystal seen point on, under the edge crystal: its tip at (-19, 191), its
+    corners at (-32, 207), (-3, 202) and (-14, 213), a white ridge from the tip to the lowest."""
+    p, lc, rc, c = (-19, 191), (-32, 207), (-3, 202), (-14, 213)
+    left, right = [p, lc, c], [p, c, rc]
+    for poly in (left, right):
+        fill(poly)
+    box_shaded(left, [(p, lc, 4), (p, c, 2), (lc, c, 1.2)])
+    box_shaded(right, [(p, rc, 3.5), (p, c, 1.8), (c, rc, 1.2)])
+    line(*p, *lc, "G")
+    line(*p, *rc, "G")
+    for i, x, y in points(p[0], p[1] + 1, *c):
+        put(x, y, "W" if i < 6 or i > 17 else "G")
+    line(*lc, *c, "G")
+    line(*c, *rc, "G")
+    fading(lc, (-30, 221), 0.4, 1.0)
+    fading(c, (-12, 221), 0.4, 1.0)
+
+
+def leaning_crystal(tip, direction, point, half, body):
+    """A six-sided crystal drawn as the tall one is, its point at `tip` facing `direction`
+    (the point `point` pixels long, `half` pixels across, its body `body` pixels long, fading
+    into the ground): two faces of its point about a white ridge, two of its body."""
+    at = axis(tip, direction)
+    a = at(0, 0)
+    l, m, r = at(point, -half), at(point * 1.2, half * 0.15), at(point, half)
+    # Its right edges run on further down, the body leaning away from the light.
+    lb, mb, rb = at(point + body, -half * 0.9), at(point * 1.2 + body * 1.25, half * 0.15), \
+        at(point + body * 1.45, half * 0.9)
+    left_point, right_point = [a, l, m], [a, m, r]
+    left_body, right_body = [l, m, mb, lb], [m, r, rb, mb]
+    for poly in (left_body, right_body, left_point, right_point):
+        fill(poly)
+    # Shading as deep as the tall crystal's, for its size.
+    k = half / 12
+    box_shaded(left_body, [(l, m, 6 * k), (l, lb, 4 * k), (m, mb, 2)])
+    box_shaded(right_body, [(m, r, 5 * k), (m, mb, 3 * k), (r, rb, 2)])
+    # The point's faces mostly black inside, shaded only along their edges, as the picture's.
+    box_shaded(left_point, [(a, l, 4 * k), (a, m, 2 * k), (l, m, 1.2)])
+    box_shaded(right_point, [(a, r, 3.5 * k), (a, m, 1.8 * k), (m, r, 1.2)])
+    # The body dissolves gently into the dark towards its foot: fewer and fewer of its
+    # shading's pixels from a fifth of the way down, and only dark gold below the middle.
+    for poly in (left_body, right_body):
+        xs = [p[0] for p in poly]
+        ys = [p[1] for p in poly]
+        for y in range(math.floor(min(ys)), math.ceil(max(ys)) + 1):
+            for x in range(math.floor(min(xs)), math.ceil(max(xs)) + 1):
+                if not inside(poly, x + 0.5, y + 0.5) or get(x, y) in (None, "."):
+                    continue
+                down = ((x - l[0]) * -direction[0] + (y - l[1]) * -direction[1]) / (body * 1.3)
+                if hash01(x, y, 13) < max(0.0, (down - 0.2) / 0.75):
+                    put(x, y, ".")
+                elif down > 0.4 and get(x, y) == "G":
+                    put(x, y, "d")
+    fading(l, lb, 0.25, 0.9)
+    fading(m, mb, 0.2, 0.95)
+    fading(r, rb, 0.2, 0.95)
+    edge(a, l, 2, (1, 0), "G", "d")
+    for i, x, y in points(*a, *r):
+        put(x, y, "G")
+    n = point * 1.2
+    for i, x, y in points(*a, *m):
+        put(x, y, "W" if i < n * 0.3 or i > n * 0.75 else "G")
+    line(*l, *m, "G")
+    line(*m, *r, "G")
+
+
+def left_ground():
+    """The ground's bands carried on left of the cluster, as on the right but rising to the
+    left: purple grass, pink crystals, gold grass, clumps of purple crystals. Behind the
+    crystals (never inside one), and in a cell the crystals made gold only the gold grass, so
+    every cell keeps one palette."""
+    drawn = dict(canvas)
+    canvas.clear()
+    band(lambda x: 131 + x * 0.05, -88, -40, lambda r: GRASS_U[int(r * 3)], 7, 140)
+    band(lambda x: 143 + x * 0.08, -88, -30, lambda r: PINK_BUMP[int(r * 3)], 6, 150)
+    for x in range(-88, -30):
+        if hash01(x, 155) < 0.45:
+            put(x, round(148 + x * 0.08) + int(hash01(x, 156) * 3), "q")
+    band(lambda x: 157 + x * 0.08, -88, -6, lambda r: GOLD_GRASS[int(r * 3)], 4, 160)
+    band(lambda x: 160 + x * 0.08, -88, -8, lambda r: GOLD_GRASS[int(r * 3)], 5, 165)
+    for row in range(5):
+        y0 = 172 + row * 10
+        x = -92 + int(hash01(row, 180) * 10)
+        while x < -4:
+            if hash01(x, row, 181) < 0.8 - row * 0.12:
+                y = y0 + x * 0.16
+                for k in range(3 + int(hash01(x, row, 182) * 3)):
+                    stamp(x + int(hash01(x, k, 183) * 9) - 2,
+                          round(y) + int(hash01(x, k, 184) * 7) - 3,
+                          SHARDS[int(hash01(x, row, k, 185) * 4)])
+            x += 9 + int(hash01(x, row, 186) * 8)
+    ground = dict(canvas)
+    canvas.clear()
+    canvas.update(drawn)
+
+    def cell(x, y):
+        return (x // 8, (y + 2) // 8)
+    gold = {cell(x, y) for (x, y), c in drawn.items() if c in ("G", "d")}
+    for (x, y), c in ground.items():
+        if (x, y) in solid or not 104 <= y < GROUND_END or x >= 0 or c == ".":
+            continue
+        if get(x, y) not in (None, "."):
+            continue
+        if cell(x, y) in gold and c not in ("G", "d"):
+            continue
+        canvas[(x, y)] = c
+
+
+def left_side():
+    """The left side, back to front: the skyline, the cluster's crystals carried on and
+    closed, the ground's bands behind them."""
+    left_horizon()
+    top_crystal_close()
+    box_crystal()
+    # A big crystal behind the tall and small ones, as big as the top one, pointing between
+    # their directions.
+    leaning_crystal((-66, 114), (-0.31, -0.95), 24, 22, 78)
+    tall_crystal()
+    edge_crystal()
+    pyramid_crystal()
+    # A small crystal pointing up and to the left, by the tall one's foot.
+    leaning_crystal((-77, 185), (-0.5, -0.87), 14, 11.5, 24)
+    left_ground()
 
 
 # ---------------------------------------------------------------------------------------------
@@ -610,9 +693,10 @@ def ground():
 
 # ---------------------------------------------------------------------------------------------
 
-def draw(crystal_design, bush_design):
+def draw(bush_design):
     canvas.clear()
-    crystals(crystal_design)
+    solid.clear()
+    left_side()
     shows = bush(bush_design)
     ground()
     # The horizon's cells beside the bush and under its side, whatever was drawn there.
@@ -672,9 +756,8 @@ def png(rows):
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser()
-    args.add_argument("--crystals", type=int, default=8)
     args.add_argument("--bush", type=int, default=2)
     args.add_argument("--out", default="src/game/scene/surface-5-sides.png")
     a = args.parse_args()
     with open(a.out, "wb") as f:
-        f.write(png(draw(a.crystals, a.bush)))
+        f.write(png(draw(a.bush)))
