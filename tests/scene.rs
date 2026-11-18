@@ -1108,3 +1108,80 @@ fn a_wide_landing_lasts_as_long_as_its_song() {
         );
     }
 }
+
+/// The app's loop at a display rate of `hz`: the view's width set every frame, then the passes
+/// due on the NES frame clock. From the approach (Start pressed) to the start of play: the first
+/// pass without the landing's song and the pass play starts in, counted from the song's start.
+fn wide_landing(
+    assets: &Assets,
+    data: &solar_jetman::game::sound::SoundData,
+    level: usize,
+    width: u16,
+    hz: f64,
+) -> (u32, u32) {
+    use solar_jetman::game::sound::player::Player;
+    let mut game = Game::new(assets, Start::Approach(level)).unwrap();
+    let mut player = Player::new(data.clone(), 48_000);
+    let (mut passes, mut song_start, mut song_end) = (0u32, None, None);
+    let frame = 1.0 / hz;
+    let tick = 1.0 / solar_jetman::game::TICK_HZ;
+    let mut accumulator = 0.0;
+    loop {
+        game.set_view_width(width);
+        accumulator += frame;
+        while accumulator >= tick {
+            accumulator -= tick;
+            let buttons = if passes == 2 { Buttons::START } else { 0 };
+            game.pass(assets, Buttons(buttons)).unwrap();
+            for request in game.take_sound() {
+                match request {
+                    SoundRequest::SongIfNew(song) => {
+                        if song == 3 {
+                            song_start = Some(passes);
+                        }
+                        player.sound_mut().play_song_if_new(song);
+                    }
+                    SoundRequest::Request(request) => player.sound_mut().apply(request),
+                    _ => {}
+                }
+            }
+            player.run_frame();
+            if let Some(start) = song_start {
+                if song_end.is_none() && player.sound().driver().song() != (3, true) {
+                    song_end = Some(passes - start);
+                }
+                if game.scene_name() == "gameplay" {
+                    return (song_end.unwrap_or(u32::MAX), passes - start);
+                }
+            }
+            passes += 1;
+            assert!(
+                passes < 3000,
+                "level {level} at {width} wide, {hz} Hz: no landing"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_wide_landing_and_its_launch_end_with_the_song_at_any_display_rate() {
+    let Some(rom) = solar_jetman::tools::test_rom() else {
+        return;
+    };
+    let assets = solar_jetman::tools::assets(rom).unwrap();
+    let data = solar_jetman::tools::sound::sound_data(rom).unwrap();
+    for hz in [30.0, 60.0, 90.0, 120.0, 144.0, 165.0] {
+        for width in [427, 854] {
+            for level in 0..13 {
+                // Song 3 (1,077 frames from the pass it starts in) is silent from pass 1,076 on;
+                // play starts in pass 1,077, the song's last.
+                let (song_end, play) = wide_landing(&assets, &data, level, width, hz);
+                assert_eq!(
+                    (song_end, play),
+                    (1076, 1077),
+                    "level {level} at {width} wide, {hz} Hz"
+                );
+            }
+        }
+    }
+}

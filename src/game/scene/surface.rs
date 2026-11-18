@@ -384,9 +384,12 @@ impl Surface {
     /// nothing at the pass the original's braking starts. So it flies in faster and slows to
     /// the original's speed by then, and everything after, the music with it, is the
     /// original's. Only before the descent's first pass; at 256 nothing changes, and a second
-    /// call with another width replaces the first.
+    /// call with another width replaces the first. A scaled descent that runs slower than the
+    /// original's can take a pass or more of the remake's before its first one: it has started
+    /// then (the caller sets the width every frame, and starting again each time would hold
+    /// the mothership back while the song goes on).
     pub fn enter_from_the_edge(&mut self, width: usize) {
-        if self.mode != Mode::Descent || self.pass != 0 {
+        if self.mode != Mode::Descent || self.pass != 0 || self.scale_owed != 0 {
             return;
         }
         let beside = width.saturating_sub(SCREEN_WIDTH);
